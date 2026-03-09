@@ -5,11 +5,12 @@ last_update: 2026-03-09
 
 # Correct Structuring
 
-## 4.1. Order {#4.1.-order}
+## 1. Order {#order}
 
 1. Put the smaller if case first.
 
 E.g. instead of  
+
 def func(x):  
     if some\_condition(x):  
         do\_1(x)  
@@ -26,11 +27,11 @@ def func(x):
     return x  
 (This has less indentation, and is easier to debug).
 
-## 4.2. Default Values {#4.2.-default-values}
+## 2. Default Values {#default-values}
 
 1. Usually it’s bad practice to have a boolean parameter of a function have a default value of True because not mentioning the parameter gives it a value of True which usually means some positive action that happens where the called might not be aware of it. See if you can rename the parameter to mean the opposite, with a default value False.
 
-## 4.3. End cases {#4.3.-end-cases}
+## 3. End cases {#end-cases}
 
 Your code should handle all end cases. In particular:
 
@@ -39,11 +40,11 @@ Your code should handle all end cases. In particular:
    2. If an incorrect input cannot be encountered during runtime but only during development, you can use assert to verify that this is true. Don’t use assert statements to check for runtime errors \- Python code can be compiled while removing such statements.  
 2. Don’t end a sequence of if \- elif statements with elif. It should almost always end with else (except for very rare cases). If you are handling a few cases, each with its own if/elseif, and there is supposed to be no “else case”, then raise NotImplementedError() as the else case.
 
-## 4.4. Don’t Repeat Yourself {#4.4.-don’t-repeat-yourself}
+## 4. Don’t Repeat Yourself {#don’t-repeat-yourself}
 
 [Don’t Repeat Yourself](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself) (DRY): If you see that two sections of code are very similar, factor out the common parts to a function, and call it twice with the different values.
 
-### 4.4.1. Example 1 {#4.4.1.-example-1}
+### 4.1. Example 1 {#example-1}
 
 Here is some code using DataFrames:  
 if not some\_cond:  
@@ -69,7 +70,7 @@ Other ideas demonstrated here:
 3. Don’t write yourself the negation of a condition \- let the code do it for you  
    1. Above: in\_range is written once, and the negation is calculated using \~.
 
-### 4.4.2. Example 2 {#4.4.2.-example-2}
+### 4.2. Example 2 {#4.2.-example-2}
 
 Here are three similar functions, where node gets an instance of a class that inherits from Node.  
 def foo\_node\_a(data: pd.DataFrame, node: NodeA):  
@@ -101,7 +102,7 @@ Why is this better?
 1. It separates the logic of the main procedure (foo\_node) from the logic that differs between the classes.  
 2. If in the future we add another child of Node, it will be easier to add just the part it does differently (the condition method).
 
-## 4.5. Utilities Instead of Code Idioms {#4.5.-utilities-instead-of-code-idioms}
+## 5. Utilities Instead of Code Idioms {#5.-utilities-instead-of-code-idioms}
 
 A “[code Idiom](https://en.wikipedia.org/wiki/Programming_idiom)” is a syntactic fragment that recurs frequently across software projects and has a single semantic role. For example in Python, writing a string text into to a text file path path, while ensuring the path exists:
 
@@ -114,11 +115,11 @@ with open(path, 'w') as f:
 
 Such “code idioms” should be avoided because it doesn’t make sense that every place requiring this functionality will contain it from scratch. That’s why we implemented a [utilities repository](https://gitlab.com/evolution-inc/utilities) that wraps such low-level functions with logical operations, e.g.: ensure\_path, save\_text\_file, delete\_path, etc.
 
-This idea is a special case of the general principle [Don’t Repeat Yourself](#4.4.-don’t-repeat-yourself).
+This idea is a special case of the general principle [Don’t Repeat Yourself](#4.-don’t-repeat-yourself).
 
 See also: [Documentation of Utilities](https://docs.google.com/document/d/1fe_HXnh0lC7_AyKn461zX8g2kxpioEBr_JX7gpGaRMI/edit#heading=h.n4v8ejq297u6).
 
-## 4.6. Write Logic-Level / High-Level Code {#4.6.-write-logic-level-/-high-level-code}
+## 6. Write Logic-Level / High-Level Code {#6.-write-logic-level-/-high-level-code}
 
 Python is a very high-level, flexible programming language, which means that a lot of the results you would like to achieve can be done using very succinct code that relies on high-level operations. Many such operations are already given to you in Python or one of the libraries.
 
@@ -153,13 +154,13 @@ Here, instead of doing this calculation using low-level operations (remembering 
 lambda element: 1 \+ element.end \- element.pos  
 But that is too specific to be defined here \- according to OOP, the property of an element (such as its length) should be defined on the class itself. So we add a \_\_len\_\_ method to the TagElement class.
 
-## 4.7. Encapsulation {#4.7.-encapsulation}
+## 7. Encapsulation {#7.-encapsulation}
 
 Encapsulation is a basic principle of [Object Oriented Programming](https://en.wikipedia.org/wiki/Object-oriented_programming) (OOP). Read about [encapsulation](https://en.wikipedia.org/wiki/Encapsulation_\(computer_programming\)), and related concepts: [disadvantages of tight coupling](https://en.wikipedia.org/wiki/Coupling_\(computer_programming\)#Disadvantages_of_tight_coupling), [information hiding](https://en.wikipedia.org/wiki/Information_hiding), [separation of concerns](https://en.wikipedia.org/wiki/Separation_of_concerns), [modular design](https://en.wikipedia.org/wiki/Modular_design).
 
 The main idea is to put inside a class all members and methods that are relevant for the class, instead of spreading it around over different functions or places.
 
-### 4.7.1. Put in a class {#4.7.1.-put-in-a-class}
+### 7.1. Put in a class {#7.1.-put-in-a-class}
 
 **All queries about a class that depend only on the class content should be a method**  
 Sometimes when we define a class, we don’t yet define all methods that will be useful for that class. Don’t take the current definition of the class as Torah from Sini, you can add new methods as needed. 
@@ -178,7 +179,7 @@ Instead, the moment you see that you need such a functionality, and realize that
 
 and then simply use element.tokens\_text().
 
-### 4.7.2. Information Hiding {#4.7.2.-information-hiding}
+### 7.2. Information Hiding {#7.2.-information-hiding}
 
 [Information Hiding](https://en.wikipedia.org/wiki/Information_hiding) is the principle of segregating the design decisions of a piece of code that are most likely to change, thus protecting other parts of the program from extensive modification if the design decision is changed. The protection involves providing a stable interface which protects the remainder of the program from the implementation (whose details are likely to change).
 
@@ -210,7 +211,7 @@ use:
 
 x.set\_dc(value)
 
-### 4.7.3. Use class members instead of passing values around {#4.7.3.-use-class-members-instead-of-passing-values-around}
+### 7.3. Use class members instead of passing values around {#7.3.-use-class-members-instead-of-passing-values-around}
 
 For example, you have a for-loop that goes over some items, and does some calculation. You put this calculation in a separate function according to the principle “[Break Long/Complex Sections Into Smaller Blocks](#2.2.3.-break-long/complex-sections-into-smaller-blocks)”. But you need some variables that may be affected between iterations of the for-loop. So instead of this:
 
@@ -233,13 +234,13 @@ class SomeClass:
     def func(self, item: Item) \-\> None:  
         ...   \# code that may change self.some\_var
 
-## 4.8. Single-Responsibility Principle {#4.8.-single-responsibility-principle}
+## 8. Single-Responsibility Principle {#8.-single-responsibility-principle}
 
-The [Single-Responsibility Principle](https://en.wikipedia.org/wiki/Single-responsibility_principle) (SRP) states that every module, class or function in a computer program should have responsibility over a single part of that program's functionality, and it should [encapsulate](#4.7.-encapsulation) that part. 
+The [Single-Responsibility Principle](https://en.wikipedia.org/wiki/Single-responsibility_principle) (SRP) states that every module, class or function in a computer program should have responsibility over a single part of that program's functionality, and it should [encapsulate](#7.-encapsulation) that part. 
 
 It is related to the principle of [Separation of Concerns](https://en.wikipedia.org/wiki/Separation_of_concerns) (SOC), and is one of the five [SOLID](https://en.wikipedia.org/wiki/SOLID) principles.
 
-### 4.8.1. Separate Builder from Object {#4.8.1.-separate-builder-from-object}
+### 8.1. Separate Builder from Object {#8.1.-separate-builder-from-object}
 
 One common application of the SRP is separating the builder of a class from the class itself. Often, we have a situation where we want to instantiate a class C from information that was calculated previously (or loaded from in a file or DB). According to SRP and SOC, the building functionality of an instance of C should be separated from C itself. 
 
@@ -276,7 +277,7 @@ class LoadSomeClass:
 
 The sequence is: Instantiating LoadSomeClass with the location of the data (filepath, DB info, etc.), calling its load method to get the loaded data. Then feeding it into the constructor of BuildSomeClass, and calling its build method, to get the instance of SomeClass.
 
-## 4.9. More {#4.9.-more}
+## 9. More {#9.-more}
 
 See also: [SOLID](https://en.wikipedia.org/wiki/SOLID)  
 [The SOLID Principles](https://www.youtube.com/watch?v=RT-npV1JRKE)  
