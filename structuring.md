@@ -16,8 +16,6 @@ Although the examples are in Python, the principles apply to any programming lan
 2. [Default Values](#default-values)
 3. [End cases](#end-cases)
 4. [Don't Repeat Yourself](#don't-repeat-yourself)
-   1. [Example 1](#example-1)
-   2. [Example 2](#example-2)
 5. [Utilities Instead of Code Idioms](#utilities-instead-of-code-idioms)
 6. [Write Logic-Level / High-Level Code](#write-logic-level-/-high-level-code)
 7. [Encapsulation](#encapsulation)
@@ -101,7 +99,9 @@ It can be simplified to:
 ```python
 def in_range(x):
     return min_value <= x < max_value
+
 modifier = df[column].apply(in_range)
+
 if some_cond:
     modifier = ~modifier
 df[out] &= modifier
@@ -126,8 +126,10 @@ Here are three similar functions, where node gets an instance of a class that in
 ```python
 def foo_node_a(data: pd.DataFrame, node: NodeA):
     data[col] = data[data[col] == node.value]
+
 def foo_node_b(data: pd.DataFrame, node: NodeB):
     data[col] = data[data[col].in(node.values)]
+
 def foo_node_c(data: pd.DataFrame, node: NodeC):
     data[col] = data[data[col] <= node.max_value]
 ```
