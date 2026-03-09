@@ -9,7 +9,7 @@ last_update: 2026-03-09
 
 ## 1. Order
 
-1. Put the smaller if case first.
+1. Put the smaller `if` case first
 
 E.g. instead of  
 
