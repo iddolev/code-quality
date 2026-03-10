@@ -26,10 +26,14 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 SMART_QUOTES = {
-    "\u2018": "'",   # left single curly quote
-    "\u2019": "'",   # right single curly quote
-    "\u201C": '"',   # left double curly quote
-    "\u201D": '"',   # right double curly quote
+    # left single curly quote
+    "\u2018": "'",
+    # right single curly quote
+    "\u2019": "'",
+    # left double curly quote
+    "\u201C": '"',
+    # right double curly quote
+    "\u201D": '"',
 }
 
 MAX_LINE_LENGTH = 120
@@ -256,7 +260,7 @@ def format_content(text: str) -> str:
     return "\n".join(lines) + "\n"
 
 
-def process_file(path: Path, dry_run: bool = False) -> bool:
+def process_file(path: Path, is_dry_run: bool = False) -> bool:
     """Process a single file. Returns True if changes were made."""
     original = path.read_text(encoding="utf-8")
     formatted = format_content(original)
@@ -264,7 +268,7 @@ def process_file(path: Path, dry_run: bool = False) -> bool:
     if formatted == original:
         return False
 
-    if dry_run:
+    if is_dry_run:
         print(f"  WOULD FIX: {path}")
     else:
         path.write_text(formatted, encoding="utf-8")
@@ -327,7 +331,7 @@ def main() -> None:
 
     print(f"Processing {len(files)} markdown file(s)...\n")
     for file_path in files:
-        if process_file(file_path, dry_run=is_dry_run):
+        if process_file(file_path, is_dry_run=is_dry_run):
             changed_count += 1
 
     print(f"\n{'Would fix' if is_dry_run else 'Fixed'}: {changed_count} file(s)")
