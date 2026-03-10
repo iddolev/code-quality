@@ -1,3 +1,9 @@
+---
+author: Iddo Lev
+last_updated: 2026-03-10
+description: Improve code quality according to code quality guidelines
+---
+
 Read all markdown files under the `instructions/` folder. These contain code quality guidelines.
 
 Then, for each Python file under the `scripts/` folder, review it against all the guidelines from the instruction files. 
