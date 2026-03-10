@@ -20,7 +20,11 @@ Although examples are shown in Python, the principles apply to any programming l
    2. [Break Long/Complex Sections Into Smaller Blocks](#break-long-complex-sections-into-smaller-blocks)
    3. [Avoid Deep Nesting](#avoid-deep-nesting)
 3. [Order](#order)
-4. [Default Values](#default-values)
+4. [Function Design](#function-design)
+   1. [Default Values](#default-values)
+   2. [Limit the Number of Parameters](#limit-the-number-of-parameters)
+   3. [Avoid Boolean Flag Parameters](#avoid-boolean-flag-parameters)
+   4. [Prefer Pure Functions](#prefer-pure-functions)
 5. [End Cases](#end-cases)
 6. [Don't Repeat Yourself](#don't-repeat-yourself)
 7. [Utilities Instead of Code Idioms](#utilities-instead-of-code-idioms)
@@ -221,16 +225,106 @@ def func(x):
 
 This has less indentation, and is easier to debug.
 
+<a id="function-design"/>
+
+## 4. Function Design
+
 <a id="default-values"/>
 
-## 4. Default Values
-
-### 4.1. Usually boolean default value should be False and not True
+### 4.1. Default Values: Usually boolean default value should be False and not True
 
 Usually it's bad practice to have a boolean parameter of a function have a default value of True
 because not mentioning the parameter gives it a value of True which usually means some positive action that happens
 where the called might not be aware of it.
 See if you can rename the parameter to mean the opposite, with a default value False.
+
+<a id="limit-the-number-of-parameters"/>
+
+### 4.2. Limit the Number of Parameters
+
+A function with many parameters is hard to read, call correctly, and maintain. As a rule of thumb, aim for **3 or fewer** parameters. When you find yourself adding a 4th or 5th parameter, consider grouping related parameters into a dataclass or configuration object.
+
+For example, instead of:
+
+```python
+def send_report(title: str, recipient: str, cc: str, subject: str,
+                body: str, attach_csv: bool, compress: bool):
+    ...
+```
+
+define a config object:
+
+```python
+@dataclass
+class ReportConfig:
+    title: str
+    recipient: str
+    cc: str
+    subject: str
+    body: str
+    attach_csv: bool = False
+    compress: bool = False
+
+def send_report(config: ReportConfig):
+    ...
+```
+
+This makes call sites cleaner, and adding a new option in the future doesn't change the function signature.
+
+<a id="avoid-boolean-flag-parameters"/>
+
+### 4.3. Avoid Boolean Flag Parameters
+
+A boolean parameter that causes a function to do one of two substantially different things is a sign that the function should be split in two. The caller knows which branch they want, so make that explicit.
+
+For example, instead of:
+
+```python
+def load_data(source: str, from_cache: bool):
+    if from_cache:
+        return _load_from_cache(source)
+    else:
+        return _load_from_disk(source)
+```
+
+expose two functions:
+
+```python
+def load_data_from_cache(source: str):
+    return _load_from_cache(source)
+
+def load_data_from_disk(source: str):
+    return _load_from_disk(source)
+```
+
+This makes every call site self-documenting. The reader never has to look up what `True` or `False` means.
+
+Note: this guideline applies when the boolean selects between **different behaviors**. A boolean that slightly modifies the same behavior (e.g. `verbose=True` adding log output) is fine.
+
+<a id="prefer-pure-functions"/>
+
+### 4.4. Prefer Pure Functions
+
+A <a href="https://en.wikipedia.org/wiki/Pure_function" target="_blank">pure function</a> is one whose return value depends only on its inputs and that has no side effects. Pure functions are easier to test, debug, and reason about.
+
+For example, instead of:
+
+```python
+total = 0
+
+def add_to_total(value: int):
+    global total
+    total += value
+```
+
+prefer:
+
+```python
+def compute_total(values: List[int]) -> int:
+    return sum(values)
+```
+
+When side effects are necessary (I/O, logging, database writes), isolate them at the boundaries of your program and keep the core logic pure. That is, have thin outer functions that perform the I/O (reading a file, querying a database, writing output) and pass the resulting data into pure inner functions that contain the actual logic.
 
 <a id="end-cases"/>
 
