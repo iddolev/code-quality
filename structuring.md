@@ -34,6 +34,8 @@ Although examples are shown in Python, the principles apply to any programming l
    4. [Prefer Pure Functions](#prefer-pure-functions)
 5. [End Cases](#end-cases)
 6. [Don't Repeat Yourself](#don't-repeat-yourself)
+  1. TBD
+  2. TBD 
 7. [Utilities Instead of Code Idioms](#utilities-instead-of-code-idioms)
 8. [Write Logic-Level / High-Level Code](#write-logic-level-high-level-code)
 9. [Encapsulation](#encapsulation)
@@ -531,7 +533,29 @@ Your code should handle all end cases. In particular:
 1. Don't assume correct input. Check for it. Either:
    1. If an incorrect input may be encountered during runtime, check for it and, if needed, raise ValueError or some other appropriate Exception.
    2. If an incorrect input cannot be encountered during runtime but only during development, you can use `assert` to verify that this is true. Don't use assert statements to check for runtime errors \- Python code can be compiled to remove such statements.
-2. Don't end a sequence of `if` - `elif` statements with `elif`. It should almost always end with `else` (except for very rare cases). If you are handling a few cases, each with its own `if`/`elif`, and there is supposed to be no `else` case, then raise `NotImplementedError()` as the `else` case.
+2. Always end an `if`/`elif` chain with an `else` clause. If there is supposed to be no `else` case, raise `NotImplementedError()` to catch unexpected values. For example, instead of:
+
+```python
+def direction_label(dx):
+    if dx > 0:
+        return "right"
+    elif dx < 0:
+        return "left"
+    elif dx == 0:
+        return "none"
+```
+
+use:
+
+```python
+def direction_label(dx):
+    if dx > 0:
+        return "right"
+    elif dx < 0:
+        return "left"
+    else:
+        return "none"
+```
 
 <a id="don't-repeat-yourself"/>
 
@@ -539,9 +563,9 @@ Your code should handle all end cases. In particular:
 
 <a href="https://en.wikipedia.org/wiki/Don%27t_repeat_yourself" target="_blank">Don't Repeat Yourself</a> (DRY): If you see that two sections of code look very similar, factor out the common parts to a function, and call it twice with the different values.
 
-<a id="example-1"/>
+<a id="factor-out-conditional-differences"/>
 
-### 6.1. Example 1
+### 6.1. Factor Out Conditional Differences
 
 Here is some code using DataFrames:
 
@@ -575,9 +599,9 @@ Other ideas demonstrated here:
 3. Don't write the negation of a condition by yourself - let the code do it for you
    1. Above, in the corrected code: `in_range` is written once, and the negation is calculated using `~`.
 
-<a id="example-2"/>
+<a id="use-polymorphism"/>
 
-### 6.2. Example 2
+### 6.2. Use Polymorphism
 
 Here are three similar functions, where `NodeA`, `NodeB`, and `NodeC` are subclasses of `Node`.
 
