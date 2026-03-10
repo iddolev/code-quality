@@ -23,7 +23,7 @@ import sys
 import textwrap
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 SMART_QUOTES = {
     "\u2018": "'",   # left single curly quote
@@ -46,10 +46,11 @@ def find_markdown_files(root: Path) -> list[Path]:
     """Find all markdown files in the repo, excluding EXCLUDE_PATTERNS and special files."""
     files = []
     for path in sorted(root.rglob("*.md")):
-        rel = path.relative_to(root).as_posix()
-        if any(f"/{e}/" in f"/{rel}" for e in EXCLUDE_PATTERNS):
+        relative_path = path.relative_to(root).as_posix()
+        if any(f"/{pattern}/" in f"/{relative_path}" for pattern in EXCLUDE_PATTERNS):
             continue
-        if any(rel.startswith(p) or rel.endswith(p) for p in EXCLUDE_PATTERNS):
+        if any(relative_path.startswith(pattern) or relative_path.endswith(pattern)
+               for pattern in EXCLUDE_PATTERNS):
             continue
         files.append(path)
     return files
@@ -90,9 +91,9 @@ def _is_list_item_start(line: str) -> bool:
 
 def _list_continuation_indent(line: str) -> str:
     """Return the indent for continuation lines of a list item."""
-    m = re.match(r"^(\s*[-*+] )", line) or re.match(r"^(\s*\d+[.)]\s)", line)
-    if m:
-        return " " * len(m.group(1))
+    match = re.match(r"^(\s*[-*+] )", line) or re.match(r"^(\s*\d+[.)]\s)", line)
+    if match:
+        return " " * len(match.group(1))
     return _detect_indent(line)
 
 
@@ -159,14 +160,6 @@ def _is_list_continuation(line: str, list_indent_depth: int) -> bool:
         return False
     indent = len(_detect_indent(line))
     return indent >= list_indent_depth
-
-
-def _find_last_nonblank(result: list[str]) -> str | None:
-    """Return the last non-blank line in result, or None."""
-    for line in reversed(result):
-        if not _is_blank(line):
-            return line
-    return None
 
 
 def fix_heading_and_list_spacing(lines: list[str]) -> list[str]:
@@ -305,8 +298,9 @@ def main() -> None:
                 files.append(path.resolve())
             elif path.is_dir():
                 for md_file in sorted(path.rglob("*.md")):
-                    relative_posix = md_file.relative_to(REPO_ROOT).as_posix()
-                    if not any(relative_posix.startswith(e) for e in EXCLUDE_PATTERNS):
+                    relative_path = md_file.relative_to(REPO_ROOT).as_posix()
+                    if not any(relative_path.startswith(pattern)
+                               for pattern in EXCLUDE_PATTERNS):
                         files.append(md_file.resolve())
     else:
         files = find_markdown_files(REPO_ROOT)
