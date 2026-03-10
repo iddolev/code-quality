@@ -14,32 +14,59 @@ Although examples are shown in Python, the principles apply to any programming l
 
 ## Table of Contents
 
-1. [Visual Flow](#visual-flow)
+1. [Naming Conventions](#naming-conventions)
+2. [Visual Flow](#visual-flow)
    1. [Line Splits](#line-splits)
    2. [Break Long/Complex Sections Into Smaller Blocks](#break-long-complex-sections-into-smaller-blocks)
    3. [Avoid Deep Nesting](#avoid-deep-nesting)
-2. [Order](#order)
-3. [Default Values](#default-values)
-4. [End Cases](#end-cases)
-5. [Don't Repeat Yourself](#don't-repeat-yourself)
-6. [Utilities Instead of Code Idioms](#utilities-instead-of-code-idioms)
-7. [Write Logic-Level / High-Level Code](#write-logic-level-high-level-code)
-8. [Encapsulation](#encapsulation)
+3. [Order](#order)
+4. [Default Values](#default-values)
+5. [End Cases](#end-cases)
+6. [Don't Repeat Yourself](#don't-repeat-yourself)
+7. [Utilities Instead of Code Idioms](#utilities-instead-of-code-idioms)
+8. [Write Logic-Level / High-Level Code](#write-logic-level-high-level-code)
+9. [Encapsulation](#encapsulation)
    1. [Put in a class](#put-in-a-class)
    2. [Information Hiding](#information-hiding)
    3. [Use class members instead of passing values around](#use-class-members-instead-of-passing-values-around)
-9. [Single-Responsibility Principle](#single-responsibility-principle)
-   1. [Separate Builder from Object](#separate-builder-from-object)
-10. [Naming Conventions](#naming-conventions)
+10. [Single-Responsibility Principle](#single-responsibility-principle)
+    1. [Separate Builder from Object](#separate-builder-from-object)
 11. [More](#more)
+
+<a id="naming-conventions"/>
+
+## 1. Naming Conventions
+
+Use consistent naming conventions throughout your codebase. Consistent naming makes code easier to read, search, and maintain.
+
+Specifically in Python, follow the conventions defined in <a href="https://peps.python.org/pep-0008/#naming-conventions" target="_blank">PEP 8</a>:
+
+| Element             | Convention       | Examples            |
+|---------------------|------------------|---------------------|
+| Files / modules     | `snake_case`     | `data_loader.py`    |
+| Packages            | `lowercase`      | `mypackage`         |
+| Variables           | `snake_case`     | `max_retries`       |
+| Functions           | `snake_case`     | `calculate_score()` |
+| Methods             | `snake_case`     | `get_user_name()`   |
+| Classes             | `PascalCase`     | `DataProcessor`     |
+| Constants           | `UPPER_SNAKE_CASE` | `MAX_BUFFER_SIZE`   |
+| Type variables      | `PascalCase`     | `KeyType`, `T`      |
+| Private members     | `_leading_underscore` | `_internal_cache`   |
+
+Beyond following a convention table, keep these principles in mind:
+
+1. **Use descriptive names.** A variable name should convey its purpose. Prefer `remaining_attempts` over `r` or `tmp`. Single-letter names are acceptable only for short-lived loop indices or well-known conventions (e.g. `i`, `x`, `df`).
+2. **Booleans should read as conditions.** Use prefixes like `is_`, `has_`, `should_`, or `can_` so that `if` statements read naturally, e.g. `if is_valid:` rather than `if valid:`.
+3. **Avoid abbreviations** unless they are universally understood in the domain (e.g. `url`, `html`, `db`). Prefer `configuration` over `cfg`, `message` over `msg`.
+4. **Be consistent across the codebase.** If one module calls it `user_id`, don't call it `userId` or `uid` elsewhere. Pick one term for each concept and stick with it.
 
 <a id="visual-flow"/>
 
-## 1. Visual Flow
+## 2. Visual Flow
 
 <a id="line-splits"/>
 
-### 1.1. Line Splits
+### 2.1. Line Splits
 
 Long lines should be split rather than allow them to overflow beyond approx. 100 characters. They should be split in logical places.
 
@@ -73,7 +100,7 @@ write:
 
 <a id="break-long-complex-sections-into-smaller-blocks"/>
 
-### 1.2. Break Long/Complex Sections Into Smaller Blocks
+### 2.2. Break Long/Complex Sections Into Smaller Blocks
 
 Break large blocks by refactoring into smaller chunks:
 
@@ -82,7 +109,7 @@ Break large blocks by refactoring into smaller chunks:
 
 <a id="avoid-deep-nesting"/>
 
-### 1.3. Avoid Deep Nesting
+### 2.3. Avoid Deep Nesting
 
 Avoid nesting with more than 2 or 3 levels, as it becomes unreadable, and difficult to maintain.
 
@@ -160,9 +187,9 @@ def settle_accounts(ledgers):
 
 <a id="order"/>
 
-## 2. Order
+## 3. Order
 
-### 2.1. Put the smaller `if` case first
+### 3.1. Put the smaller `if` case first
 
 E.g. instead of
 
@@ -196,18 +223,18 @@ This has less indentation, and is easier to debug.
 
 <a id="default-values"/>
 
-## 3. Default Values
+## 4. Default Values
 
-### 3.1. Usually boolean default value should be False and not True
+### 4.1. Usually boolean default value should be False and not True
 
-Usually it's bad practice to have a boolean parameter of a function have a default value of True 
-because not mentioning the parameter gives it a value of True which usually means some positive action that happens 
-where the called might not be aware of it. 
+Usually it's bad practice to have a boolean parameter of a function have a default value of True
+because not mentioning the parameter gives it a value of True which usually means some positive action that happens
+where the called might not be aware of it.
 See if you can rename the parameter to mean the opposite, with a default value False.
 
 <a id="end-cases"/>
 
-## 4. End Cases
+## 5. End Cases
 
 Your code should handle all end cases. In particular:
 
@@ -218,13 +245,13 @@ Your code should handle all end cases. In particular:
 
 <a id="don't-repeat-yourself"/>
 
-## 5. Don't Repeat Yourself
+## 6. Don't Repeat Yourself
 
 <a href="https://en.wikipedia.org/wiki/Don%27t_repeat_yourself" target="_blank">Don't Repeat Yourself</a> (DRY): If you see that two sections of code look very similar, factor out the common parts to a function, and call it twice with the different values.
 
 <a id="example-1"/>
 
-### 5.1. Example 1
+### 6.1. Example 1
 
 Here is some code using DataFrames:
 
@@ -260,7 +287,7 @@ Other ideas demonstrated here:
 
 <a id="example-2"/>
 
-### 5.2. Example 2
+### 6.2. Example 2
 
 Here are three similar functions, where `NodeA`, `NodeB`, and `NodeC` are subclasses of `Node`.
 
@@ -305,7 +332,7 @@ Why is this better?
 
 <a id="utilities-instead-of-code-idioms"/>
 
-## 6. Utilities Instead of Code Idioms
+## 7. Utilities Instead of Code Idioms
 
 A "<a href="https://en.wikipedia.org/wiki/Programming_idiom" target="_blank">code Idiom</a>" is a syntactic fragment that recurs frequently across software projects and has a single semantic role. For example in Python, writing a string text into to a text file path, while ensuring the path exists:
 
@@ -333,7 +360,7 @@ This idea is a special case of the general principle [Don't Repeat Yourself](#do
 
 <a id="write-logic-level-high-level-code"/>
 
-## 7. Write Logic-Level / High-Level Code
+## 8. Write Logic-Level / High-Level Code
 
 Python and other modern programming languages are very high-level and flexible, which means that a lot of the results you would like to achieve can be done using very succinct code that relies on high-level operations. Many such operations are already given to you in the programming language or in some existing library.
 
@@ -384,7 +411,7 @@ class TagElement:
 
 <a id="encapsulation"/>
 
-## 8. Encapsulation
+## 9. Encapsulation
 
 Encapsulation is a basic principle of <a href="https://en.wikipedia.org/wiki/Object-oriented_programming" target="_blank">Object Oriented Programming</a> (OOP). Read about <a href="https://en.wikipedia.org/wiki/Encapsulation_(computer_programming)" target="_blank">encapsulation</a>, and related concepts: <a href="https://en.wikipedia.org/wiki/Coupling_(computer_programming)#Disadvantages_of_tight_coupling" target="_blank">disadvantages of tight coupling</a>, <a href="https://en.wikipedia.org/wiki/Information_hiding" target="_blank">information hiding</a>, <a href="https://en.wikipedia.org/wiki/Separation_of_concerns" target="_blank">separation of concerns</a>, <a href="https://en.wikipedia.org/wiki/Modular_design" target="_blank">modular design</a>.
 
@@ -392,7 +419,7 @@ The main idea is to put inside a class all members and methods that are relevant
 
 <a id="put-in-a-class"/>
 
-### 8.1. Put in a class
+### 9.1. Put in a class
 
 **All queries about a class that depend only on the class content should be a method in the class**
 
@@ -419,7 +446,7 @@ and then simply use `element.tokens_text`.
 
 <a id="information-hiding"/>
 
-### 8.2. Information Hiding
+### 9.2. Information Hiding
 
 <a href="https://en.wikipedia.org/wiki/Information_hiding" target="_blank">Information Hiding</a> is the principle of segregating the design decisions of a piece of code that are most likely to change, thus protecting other parts of the program from extensive modification if the design decision is changed. The protection involves providing a stable *interface* which protects the remainder of the program from the implementation.
 
@@ -465,9 +492,9 @@ x.set_dc(value)
 
 <a id="use-class-members-instead-of-passing-values-around"/>
 
-### 8.3. Use class members instead of passing values around
+### 9.3. Use class members instead of passing values around
 
-For example, you have a for-loop that goes over some items, and does some calculation. You put this calculation in a separate function according to the principle "[Break Long/Complex Sections Into Smaller Blocks](#break-long-complex-sections-into-smaller-blocks)". 
+For example, you have a for-loop that goes over some items, and does some calculation. You put this calculation in a separate function according to the principle "[Break Long/Complex Sections Into Smaller Blocks](#break-long-complex-sections-into-smaller-blocks)".
 But you need some variables that may be affected between iterations of the for-loop. So instead of this:
 
 ```python
@@ -499,7 +526,7 @@ class SomeClass:
 
 <a id="single-responsibility-principle"/>
 
-## 9. Single-Responsibility Principle
+## 10. Single-Responsibility Principle
 
 The <a href="https://en.wikipedia.org/wiki/Single-responsibility_principle" target="_blank">Single-Responsibility Principle</a> (SRP) states that every module, class or function in a computer program should have responsibility over a single part of that program's functionality, and it should [encapsulate](#encapsulation) that part.
 
@@ -507,7 +534,7 @@ It is related to the principle of <a href="https://en.wikipedia.org/wiki/Separat
 
 <a id="separate-builder-from-object"/>
 
-### 9.1. Separate Builder from Object
+### 10.1. Separate Builder from Object
 
 One common application of the SRP is separating the builder of a class from the class itself. Often, we have a situation where we want to instantiate a class `C` from information that was calculated previously (or loaded from a file or a database). According to SRP and SOC, the building functionality of an instance of `C` should be separated from `C` itself.
 
@@ -551,33 +578,6 @@ class LoadSomeClass:
 ```
 
 The sequence is: Instantiating LoadSomeClass with the location of the data (filepath, DB info, etc.), calling its `load` method to get the loaded data. Then feeding this data into the constructor of `BuildSomeClass`, and calling its `build` method, to get the instance of `SomeClass`.
-
-<a id="naming-conventions"/>
-
-## 10. Naming Conventions
-
-Use consistent naming conventions throughout your codebase. Consistent naming makes code easier to read, search, and maintain. 
-
-Specifically in Python, follow the conventions defined in <a href="https://peps.python.org/pep-0008/#naming-conventions" target="_blank">PEP 8</a>:
-
-| Element             | Convention       | Examples            |
-|---------------------|------------------|---------------------|
-| Files / modules     | `snake_case`     | `data_loader.py`    |
-| Packages            | `lowercase`      | `mypackage`         |
-| Variables           | `snake_case`     | `max_retries`       |
-| Functions           | `snake_case`     | `calculate_score()` |
-| Methods             | `snake_case`     | `get_user_name()`   |
-| Classes             | `PascalCase`     | `DataProcessor`     |
-| Constants           | `UPPER_SNAKE_CASE` | `MAX_BUFFER_SIZE`   |
-| Type variables      | `PascalCase`     | `KeyType`, `T`      |
-| Private members     | `_leading_underscore` | `_internal_cache`   |
-
-Beyond following a convention table, keep these principles in mind:
-
-1. **Use descriptive names.** A variable name should convey its purpose. Prefer `remaining_attempts` over `r` or `tmp`. Single-letter names are acceptable only for short-lived loop indices or well-known conventions (e.g. `i`, `x`, `df`).
-2. **Booleans should read as conditions.** Use prefixes like `is_`, `has_`, `should_`, or `can_` so that `if` statements read naturally, e.g. `if is_valid:` rather than `if valid:`.
-3. **Avoid abbreviations** unless they are universally understood in the domain (e.g. `url`, `html`, `db`). Prefer `configuration` over `cfg`, `message` over `msg`.
-4. **Be consistent across the codebase.** If one module calls it `user_id`, don't call it `userId` or `uid` elsewhere. Pick one term for each concept and stick with it.
 
 <a id="more"/>
 
