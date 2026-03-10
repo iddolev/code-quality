@@ -12,19 +12,18 @@ Usage:
     python scripts/format_markdown.py [paths...]
 
     If no paths are given, all *.md files in the repo are processed
-    (excluding sandbox/ anf tmd/ and .git/).
+    (excluding sandbox/ and tmp/ and .git/).
 """
 
 from __future__ import annotations
 
 import argparse
-import os
 import re
 import sys
 import textwrap
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+REPO_ROOT = Path(__file__).resolve().parent
 
 SMART_QUOTES = {
     "\u2018": "'",   # left single curly quote
