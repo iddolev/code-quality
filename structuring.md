@@ -23,6 +23,9 @@ Although examples are shown in Python, the principles apply to any programming l
    2. [Break Long/Complex Sections Into Smaller Blocks](#break-long-complex-sections-into-smaller-blocks)
    3. [Avoid Deep Nesting](#avoid-deep-nesting)
 3. [Order](#order)
+   1. [Put the smaller `if` case first](#put-the-smaller-if-case-first)
+   2. [Order `if/elif` branches by likelihood](#order-ifelif-branches-by-likelihood)
+   3. [Order methods and functions consistently](#order-methods-and-functions-consistently)
 4. [Function Design](#function-design)
    1. [Default Values](#default-values)
    2. [Limit the Number of Parameters](#limit-the-number-of-parameters)
@@ -308,6 +311,8 @@ def settle_accounts(ledgers):
 
 ## 3. Order
 
+<a id="put-the-smaller-if-case-first"/>
+
 ### 3.1. Put the smaller `if` case first
 
 E.g. instead of
@@ -339,6 +344,71 @@ def func(x):
 ```
 
 This has less indentation, and is easier to debug.
+
+<a id="order-ifelif-branches-by-likelihood"/>
+
+### 3.2. Order `if/elif` branches by likelihood
+
+When you have a chain of `if/elif` branches, put the most common case first. This makes the code easier to read because the reader encounters the typical path before the edge cases.
+
+For example, instead of:
+
+```python
+def classify(score):
+    if score < 0:
+        return "invalid"
+    elif score >= 90:
+        return "excellent"
+    elif score >= 70:
+        return "good"
+    else:
+        return "needs improvement"
+```
+
+if most scores fall in the "needs improvement" range, write:
+
+```python
+def classify(score):
+    if 0 <= score < 70:
+        return "needs improvement"
+    elif score < 90:
+        return "good"
+    elif score >= 90:
+        return "excellent"
+    else:
+        return "invalid"
+```
+
+Note: If this rule contradicts the previous rule [Put the smaller `if` case first](#put-the-smaller-if-case-first), then it's a judgment call: Prefer the previous rule if it's more pronounced.
+
+<a id="order-methods-and-functions-consistently"/>
+
+### 3.3. Order methods and functions consistently
+
+Within a file or class, follow a consistent ordering convention so that readers know where to look:
+
+1. **In a class:** put public methods before private (underscore-prefixed) methods. Within each group, a logical ordering (e.g. lifecycle order: `__init__`, then the main entry point, then helpers) is better than alphabetical.
+2. **In a module:** define helper functions before the functions that call them (bottom-up), or after them (top-down) — but be consistent across the codebase. In Python, both styles work because functions are looked up at call time, not at definition time.
+
+For example, instead of scattering helpers randomly:
+
+```python
+class ReportGenerator:
+    def _format_header(self): ...
+    def generate(self): ...
+    def __init__(self, data): ...
+    def _write_to_file(self, path): ...
+```
+
+organize by visibility and logical flow:
+
+```python
+class ReportGenerator:
+    def __init__(self, data): ...
+    def generate(self): ...
+    def _format_header(self): ...
+    def _write_to_file(self, path): ...
+```
 
 <a id="function-design"/>
 
