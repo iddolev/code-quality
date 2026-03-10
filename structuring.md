@@ -14,7 +14,9 @@ Although examples are shown in Python, the principles apply to any programming l
 
 ## Table of Contents
 
-1. [Naming Conventions](#naming-conventions)
+1. [Basic Understanding](#basic-understanding)
+   1. [Naming Conventions](#naming-conventions)
+   2. [Avoid Magic Values](#avoid-magic-values)
 2. [Visual Flow](#visual-flow)
    1. [Line Splits](#line-splits)
    2. [Break Long/Complex Sections Into Smaller Blocks](#break-long-complex-sections-into-smaller-blocks)
@@ -37,9 +39,13 @@ Although examples are shown in Python, the principles apply to any programming l
     1. [Separate Builder from Object](#separate-builder-from-object)
 11. [More](#more)
 
+<a id="basic-understanding"/>
+
+## 1. Basic Understanding
+
 <a id="naming-conventions"/>
 
-## 1. Naming Conventions
+### 1.1. Naming Conventions
 
 Use consistent naming conventions throughout your codebase. Consistent naming makes code easier to read, search, and maintain.
 
@@ -64,7 +70,84 @@ Beyond following a convention table, keep these principles in mind:
 3. **Avoid abbreviations** unless they are universally understood in the domain (e.g. `url`, `html`, `db`). Prefer `configuration` over `cfg`, `message` over `msg`.
 4. **Be consistent across the codebase.** If one module calls it `user_id`, don't call it `userId` or `uid` elsewhere. Pick one term for each concept and stick with it.
 
+<a id="avoid-magic-values"/>
+
+### 1.2. Avoid Magic Values
+
+A "<a href="https://en.wikipedia.org/wiki/Magic_number_(programming)" target="_blank">magic value</a>" is a literal number, string, or other value that appears directly in the code without explanation. "Magic values" make the code harder to read (the reader has to guess what the value means) and harder to maintain (if the value needs to change, you have to find every occurrence).
+
+For example, instead of:
+
+```python
+if retries > 3:
+    raise TimeoutError("too many retries")
+
+time.sleep(86400)
+```
+
+define named constants:
+
+```python
+MAX_RETRIES = 3
+SECONDS_IN_A_DAY = 86400
+
+if retries > MAX_RETRIES:
+    raise TimeoutError("too many retries")
+
+time.sleep(SECONDS_IN_A_DAY)
+```
+
+The same applies to string literals. Instead of scattering `"pending"`, `"approved"`, `"rejected"` throughout the code, define them in one place (e.g. as constants, an `Enum`, or a dedicated class):
+
+```python
+class Status:
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+```
+
+In this way:
+
+- It’s easier to find usages of the value by asking the IDE to show usages of the constant, instead of searching for the value itself.
+- An in-place typo like `"aproved"` becomes impossible
+- Your IDE can autocomplete the values and usages of variable
+- Renaming a status requires changing only one line.
+
 <a id="visual-flow"/>
+
+### 1.3. Comments
+
+It is a good practice to add a comment (starting with `#`) explaining a line or segment of code whose purpose or function may not be clear.
+
+Place the comment on the line above the code, not at the end of the line. E.g., instead of:
+
+```python
+for key in d:  # comment explaining the loop
+    do_something(key, d)
+```
+
+use:
+
+```python
+# comment explaining this
+for key in d:
+    do_something(key, d)
+```
+
+However, in conditional cases, add the explanation inside the case. E.g., instead of:
+
+```python
+if some_condition:  # comment explaining this case
+    do_something
+```
+
+use:
+
+```python
+if some_condition:
+    # comment explaining this case
+    do_something
+```
 
 ## 2. Visual Flow
 
