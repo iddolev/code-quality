@@ -47,25 +47,28 @@ EXCLUDE_PATTERNS = [
 ]
 
 
+def _is_excluded(relative_path: str) -> bool:
+    """Check if a relative path matches any exclusion pattern."""
+    prefixed = f"/{relative_path}"
+    return any(f"/{pattern}" in prefixed for pattern in EXCLUDE_PATTERNS)
+
+
 def find_markdown_files(root: Path) -> list[Path]:
     """Find all markdown files in the repo, excluding EXCLUDE_PATTERNS and special files."""
     files = []
     for path in sorted(root.rglob("*.md")):
         relative_path = path.relative_to(root).as_posix()
-        if any(f"/{pattern}/" in f"/{relative_path}" for pattern in EXCLUDE_PATTERNS):
-            continue
-        if any(relative_path.startswith(pattern) or relative_path.endswith(pattern)
-               for pattern in EXCLUDE_PATTERNS):
-            continue
-        files.append(path)
+        if not _is_excluded(relative_path):
+            files.append(path)
     return files
+
+
+_SMART_QUOTE_TABLE = str.maketrans(SMART_QUOTES)
 
 
 def fix_smart_quotes(text: str) -> str:
     """Rule 1: Replace smart/curly quotes with ASCII equivalents."""
-    for old, new in SMART_QUOTES.items():
-        text = text.replace(old, new)
-    return text
+    return text.translate(_SMART_QUOTE_TABLE)
 
 
 def _is_table_row(line: str) -> bool:
@@ -102,29 +105,22 @@ def _list_continuation_indent(line: str) -> str:
     return _detect_indent(line)
 
 
-def _is_inside_code_fence(lines: list[str], index: int) -> bool:
-    """Check whether line at index is inside a fenced code block."""
-    fence_count = 0
-    for i in range(index):
-        if re.match(CODE_FENCE_PATTERN, lines[i]):
-            fence_count += 1
-    return fence_count % 2 == 1
-
-
 def wrap_long_lines(lines: list[str]) -> list[str]:
     """Rule 2: Wrap lines exceeding 120 characters."""
     result = []
-    for i, line in enumerate(lines):
-        if len(line) <= MAX_LINE_LENGTH:
+    in_code_fence = False
+    for line in lines:
+        if re.match(CODE_FENCE_PATTERN, line):
+            in_code_fence = not in_code_fence
             result.append(line)
             continue
 
-        # Exceptions: table rows, URL lines, code fences
+        if in_code_fence or len(line) <= MAX_LINE_LENGTH:
+            result.append(line)
+            continue
+
+        # Exceptions: table rows, URL lines
         if _is_table_row(line) or _is_url_line(line):
-            result.append(line)
-            continue
-
-        if _is_inside_code_fence(lines, i):
             result.append(line)
             continue
 
@@ -289,8 +285,7 @@ def _collect_files(path_args: list[str]) -> list[Path]:
         elif path.is_dir():
             for md_file in sorted(path.rglob("*.md")):
                 relative_path = md_file.relative_to(REPO_ROOT).as_posix()
-                if not any(relative_path.startswith(pattern)
-                           for pattern in EXCLUDE_PATTERNS):
+                if not _is_excluded(relative_path):
                     files.append(md_file.resolve())
     return files
 
