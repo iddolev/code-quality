@@ -25,6 +25,7 @@ Run each of these tool commands and collect their output:
 3. `/cq:comment-todo-format $ARGUMENTS`
 4. `/cq:visual-line-length $ARGUMENTS`
 5. `/cq:visual-complexity $ARGUMENTS`
+6. `/cq:func-param-count $ARGUMENTS`
 
 [TBD: add more]
 
