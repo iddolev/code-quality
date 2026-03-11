@@ -26,10 +26,10 @@ TOOL_SEPARATOR = "-" * 20
 FILE_SEPARATOR = "=" * 20
 
 
-def _cmd_from_template(path: Path, cmd_tempate: Tuple[str, ...]) -> list[str]:
+def _cmd_from_template(path: Path, cmd_template: tuple[str, ...]) -> list[str]:
     """Build a command list by replacing 'path' placeholders with the actual path."""
     return [str(path) if part == "path" else part
-            for part in cmd_tempate]
+            for part in cmd_template]
 
 
 def _run_tool(path: Path, cmd_template: tuple[str, ...]) -> None:
@@ -42,6 +42,8 @@ def _run_tool(path: Path, cmd_template: tuple[str, ...]) -> None:
             print(result.stdout)
         if result.stderr:
             print(result.stderr)
+        if not result.stdout and not result.stderr:
+            print("No issues found.")
     except FileNotFoundError:
         print(f"ERROR: {cmd[0]} is not installed.")
     print()
