@@ -8,7 +8,7 @@ argument-hint: <python-filepath>
 
 Run ALL code quality checks on the file `$ARGUMENTS`.
 
-First, verify `$ARGUMENTS` exists and is a filepath <filepath> to a python file. 
+First, verify `$ARGUMENTS` exists and is a filepath <python-filepath> to a python file. 
 If it's not, issue an error message and STOP execution.
 
 ## Strategy
@@ -34,7 +34,7 @@ Run each of these tool commands and collect their output:
 
 ## Output format
 
-Produce a structured report in tmp/quality_review/<filename>_YYYYMMDDHHMM.log.
+Produce a structured report in tmp/quality_review/<python-filename>_YYYYMMDDHHMM.log.
 The report should have these sections:
 
 ### 1. Summary
