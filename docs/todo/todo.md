@@ -34,5 +34,36 @@ cosmic-ray — mutation testing like mutmut but less maintained
 
 # More cases
 
-1. instead of call_x, call_y, call_z (e.g. x, y, z are various LLM API proviers), use one call_provider(name: Provider)
+1. class members should be _ especially "variables"
+2. instead of call_x, call_y, call_z (e.g. x, y, z are various LLM API proviers), use one call_provider(name: Provider)
    with Provider defines as an Enum of x, y, z
+3. Refer to docs/todo/code_quality.py as a version with 2 arguments passing and instead would be cleaner to have a class :
+   ```
+   - passing them─through─every─function─is─noisy.A─cleaner─approach─would─be─a─small─class:
+
+   Then run_tool, check_file, run_checks become methods on it, and self.log_file / self.missing_tools are just available — no need to thread them through every call 
+   signature.
+
+   The alternative — module-level globals — would also eliminate the passing but is harder to test and reason about. The class is the natural fit here since these   
+   two pieces of state have the same lifetime (one run of the script) and are always used together.
+
+   The QualityRunner class holds log_file and missing_tools as instance state, so no function needs to pass them around. _cmd_from_template and
+   _collect_python_files became @staticmethod since they don't use instance state. main() is now just:
+
+   runner = QualityRunner(log_file)
+   runner.run(path)
+   runner.write_missing_tools_summary()
+   ```
+4. instead of separated try ...long... except, refactor body to another function, so except is close by to try
+   e.g. in the py file.
+5. instead of func if cond long-body, do if not cond return then long-body, to reduce unnecessary indentation
+   e.g.
+   ```python
+      def write_missing_tools_summary(self) -> None:
+          """Write a summary of tools that were not found."""
+          if self._missing_tools:
+               self._log_file.write(f"{FILE_SEPARATOR} MISSING TOOLS SUMMARY {FILE_SEPARATOR}\n")
+               for tool in sorted(set(self._missing_tools)):
+                   self._log_file.write(f"  - {tool}\n")
+               self._log_file.write("\n")
+   ```
