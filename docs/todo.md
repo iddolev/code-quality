@@ -31,3 +31,8 @@ darglint — archived, partially covered by Ruff
 xenon — just a threshold wrapper around Radon, you can do the same with radon cc -n C
 pytype — useful but very slow and only works on Linux, overlaps heavily with mypy/pyright
 cosmic-ray — mutation testing like mutmut but less maintained
+
+# More cases
+
+1. instead of call_x, call_y, call_z (e.g. x, y, z are various LLM API proviers), use one call_provider(name: Provider)
+   with Provider defines as an Enum of x, y, z

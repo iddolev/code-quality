@@ -27,32 +27,39 @@ FILE_SEPARATOR = "=" * 20
 
 
 def _cmd_from_template(path: Path, cmd_tempate: Tuple[str, ...]) -> list[str]:
+    """Build a command list by replacing 'path' placeholders with the actual path."""
     return [str(path) if part == "path" else part
             for part in cmd_tempate]
 
 
 def _run_tool(path: Path, cmd_template: tuple[str, ...]) -> None:
+    """Run a single tool command and print its output."""
     cmd = _cmd_from_template(path, cmd_template)
     print(f"{TOOL_SEPARATOR} {cmd[0]} {TOOL_SEPARATOR}")
     try:
-        subprocess.run(cmd, check=True)
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.stdout:
+            print(result.stdout)
+        if result.stderr:
+            print(result.stderr)
     except FileNotFoundError:
         print(f"ERROR: {cmd[0]} is not installed.")
-    except subprocess.CalledProcessError:
-        # linters routinely exit non-zero when they find issues, but we don't want to crash
-        pass
     print()
 
 
 def _check_file(path: Path) -> None:
+    """Run all file-level quality tools on a single Python file."""
     for cmd_template in FILE_TOOLS:
         _run_tool(path, cmd_template)
 
 
 def _collect_python_files(folder: Path) -> list[Path]:
+    """Recursively collect .py files, skipping excluded directories."""
     files = [item
              for item in sorted(folder.rglob("*.py"))
-             if not any(part in EXCLUDED_DIRS for part in item.parts)]
+             if not any(part in EXCLUDED_DIRS
+                        # Check only parent directory names (not the filename) against EXCLUDED_DIRS
+                        for part in item.relative_to(folder).parent.parts)]
     return files
 
 
