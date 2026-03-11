@@ -9,6 +9,8 @@ Run code quality checks on the python file or folder `$ARGUMENTS`.
 
 ## Run instructions
 
+If `$ARGUMENTS` is empty, issue an error message and STOP.
+
 If the folder `tmp/quality_review` does not exist, create it.
 
 Let timestamp = the current date and time in format YYYYMMDDhhmm.

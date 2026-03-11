@@ -13,7 +13,7 @@
       "Bash(ruff check:*)",
       "Write(file_path:tmp/quality_review/**)",
       "Edit(file_path:tmp/quality_review/**)",
-      "Bash(mkdir -p tmp/quality_review*)"
+      "Bash(mkdir -p tmp/quality_review)"
     ]
   }
 }

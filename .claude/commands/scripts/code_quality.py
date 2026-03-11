@@ -52,7 +52,7 @@ class QualityRunner:
             self._missing_tools.append(cmd[0])
         except subprocess.TimeoutExpired:
             self._log_file.write(f"ERROR: {cmd[0]} timed out after 120 seconds.\n")
-        self._log_file.write("\n")
+        self._log_file.write(f"{TOOL_SEPARATOR} {cmd[0]} END {TOOL_SEPARATOR}\n")
 
     def _write_result(self, result: subprocess.CompletedProcess[str]) -> None:
         """Write a subprocess result to the log, prefixing stderr lines."""
@@ -95,6 +95,7 @@ class QualityRunner:
             for py_file in py_files:
                 self._log_file.write(f"{FILE_SEPARATOR} {py_file} {FILE_SEPARATOR}\n")
                 self._check_file(py_file)
+                self._log_file.write(f"{FILE_SEPARATOR} {py_file} END {FILE_SEPARATOR}\n\n")
             for cmd_template in FOLDER_TOOLS:
                 self._run_tool(path, cmd_template)
         else:
