@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python scripts/format_markdown.py --check 2>&1)",
+      "Bash(python scripts/format_markdown.py --check instructions/structuring.md 2>&1)",
+      "Bash(python -c \"import py_compile; py_compile.compile\\('scripts/format_markdown.py', doraise=True\\)\" 2>&1)",
+      "Bash(python scripts/format_markdown.py --check 2>&1 || true)",
+      "Bash(python scripts/format_markdown.py --check)",
+      "Bash(find /c/Code/code-quality-guidelines/.claude -type f -exec wc -l {} + 2>/dev/null)",
+      "Bash(find /c/Code/code-quality-guidelines -maxdepth 2 -name \"*.md\" -type f 2>/dev/null | xargs ls -lh)",
+      "Bash(ruff --version)",
+      "Bash(pip install:*)",
+      "Bash(ruff check:*)"
+    ]
+  }
+}
