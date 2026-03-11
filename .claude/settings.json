@@ -10,7 +10,10 @@
       "Bash(find /c/Code/code-quality-guidelines -maxdepth 2 -name \"*.md\" -type f 2>/dev/null | xargs ls -lh)",
       "Bash(ruff --version)",
       "Bash(pip install:*)",
-      "Bash(ruff check:*)"
+      "Bash(ruff check:*)",
+      "Write(file_path:C:\\Code\\code-quality-guidelines\\tmp\\quality_review\\*)",
+      "Edit(file_path:C:\\Code\\code-quality-guidelines\\tmp\\quality_review\\*)",
+      "Bash(mkdir -p tmp/quality_review*)"
     ]
   }
 }

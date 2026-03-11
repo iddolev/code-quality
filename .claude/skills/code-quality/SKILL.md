@@ -21,6 +21,8 @@ Checks cannot be run in parallel because they can modify the file, and we don't 
 Run each of these tool commands and collect their output:
 
 1. `/cq:naming-pep8 $ARGUMENTS`
+2. `/cq:comment-docstrings $ARGUMENTS`
+
 
 [TBD: add more]
 
@@ -34,7 +36,9 @@ Run each of these tool commands and collect their output:
 
 ## Output format
 
-Produce a structured report in tmp/quality_review/<python-filename>_YYYYMMDDHHMM.log.
+Whenever you are invoked:
+1. Obtain the current date and time
+2. Produce a new structured report in tmp/quality_review/<python-filename>_<current date and time as YYYYMMDDhhmm>.log.
 The report should have these sections:
 
 ### 1. Summary

@@ -9,7 +9,7 @@ Run Ruff's pep8-naming rules on the file and report violations.
 
 1. Run:
    ```
-   ruff check --select N --output-format text $ARGUMENTS
+   ruff check --select N --output-format concise $ARGUMENTS
    ```
 2. If ruff is not installed, install it: `pip install ruff --break-system-packages`
 3. Report each violation with the line number and what the correct name should be.
