@@ -22,7 +22,7 @@ Run each of these tool commands and collect their output:
 
 1. `/cq:naming-pep8 $ARGUMENTS`
 2. `/cq:comment-docstrings $ARGUMENTS`
-
+3. `/cq:comment-todo-format $ARGUMENTS`
 
 [TBD: add more]
 
@@ -37,8 +37,9 @@ Run each of these tool commands and collect their output:
 ## Output format
 
 Whenever you are invoked:
-1. Obtain the current date and time
-2. Produce a new structured report in tmp/quality_review/<python-filename>_<current date and time as YYYYMMDDhhmm>.log.
+1. If the folder tmp/quality_review does not exist, create it.
+2. Obtain the current date and time.
+3. Produce a new structured report in tmp/quality_review/<python-filename>_<current date and time as YYYYMMDDhhmm>.log.
 The report should have these sections:
 
 ### 1. Summary

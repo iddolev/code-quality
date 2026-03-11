@@ -1,5 +1,4 @@
-"""
-Format markdown files according to the project's markdown guidelines.
+"""Format markdown files according to the project's markdown guidelines.
 
 Rules enforced:
   1. Replace smart/curly quotes with ASCII equivalents.
