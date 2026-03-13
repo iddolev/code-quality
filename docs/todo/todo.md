@@ -3,6 +3,7 @@
 ## Steps
 
 1. Look at more tools below to see if to add
+2. LSP server - can / should we use it instead of / in addition to the approach here?
 
 # More tools
 
