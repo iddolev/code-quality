@@ -9,19 +9,20 @@ from io import TextIOWrapper
 from pathlib import Path
 
 EXCLUDED_DIRS = {"venv", "sandbox", "tmp", "__pycache__", ".git"}
-
+REPLACE_PATH = "_path_"
 FILE_TOOLS = [
-    ("xoot", "path"),
-    ("ruff", "check", "path"),
-    ("pylint", "path"),
-    ("pyright", "path"),
-    ("radon", "cc", "path", "-s", "-n", "C"),
-    ("bandit", "path"),
-    ("vulture", "path"),
+    ("xoot", REPLACE_PATH),
+    ("ruff", "check", REPLACE_PATH),
+    ("pylint", REPLACE_PATH),
+    ("pyright", REPLACE_PATH),
+    ("radon", "cc", REPLACE_PATH, "-s", "-n", "C"),
+    ("bandit", REPLACE_PATH),
+    ("vulture", REPLACE_PATH),
+    ("fixit", "lint", REPLACE_PATH),
 ]
 
 FOLDER_TOOLS = [
-    ("deptry", "path"),
+    ("deptry", REPLACE_PATH),
     # pip-audit doesn't need a target as it checks venv
     ("pip-audit",),
 ]
@@ -46,7 +47,7 @@ class QualityRunner:
     @staticmethod
     def _cmd_from_template(path: Path, cmd_template: tuple[str, ...]) -> list[str]:
         """Build a command list by replacing 'path' placeholders with the actual path."""
-        return [str(path) if part == "path" else part
+        return [str(path) if part == REPLACE_PATH else part
                 for part in cmd_template]
 
     def _run_tool(self, path: Path, cmd_template: tuple[str, ...]) -> None:
