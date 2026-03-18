@@ -30,6 +30,7 @@ When in doubt, leave the code unchanged, and ask the user.
    1. [Line Splits](#line-splits)
    2. [Break Long/Complex Sections Into Smaller Blocks](#break-long-complex-sections-into-smaller-blocks)
    3. [Avoid Deep Nesting](#avoid-deep-nesting)
+   4. [Keep `try` and `except` Close Together](#keep-try-and-except-close-together)
 3. [Order](#order)
    1. [Put the smaller `if` case first](#put-the-smaller-if-case-first)
    2. [Order `if/elif` branches by likelihood](#order-ifelif-branches-by-likelihood)
@@ -261,7 +262,6 @@ def get_cutoff():
 ```
 
 There are 5 levels of nesting here, and it's visually disturbing.
-Also, the concern of `FileNotFoundError` belongs together with opening a file, and not several lines below it.
 A better way of writing this is:
 
 ```python
@@ -316,6 +316,70 @@ def settle_accounts(ledgers):
     for ledger in ledgers:
         _settle_ledger(ledger)
 ```
+
+<a id="keep-try-and-except-close-together"/>
+
+### 2.4. Keep `try` and `except` Close Together
+
+The `except` clause handles an error that originates from a specific operation — typically the first line after `try:`. 
+When a long block of code sits between `try:` and `except`, the reader loses sight of which operation 
+the exception handler belongs to. It also risks catching exceptions that were thrown by unrelated code inside the block.
+
+**Rule:** Keep the `try` block as short as possible. 
+It should contain only the operation that can raise the exception (and any code that directly depends on it succeeding).
+Move everything else outside the `try/except`.
+
+For example, instead of:
+
+```python
+try:
+    content = path.read_text(encoding="utf-8")
+    lines = content.splitlines(keepends=True)
+    for i, line in enumerate(lines):
+        if re.match(r"^version\s*:", line):
+            new_line = f"version: {new_version}\n"
+            if lines[i] == new_line:
+                return
+            lines[i] = new_line
+            break
+    else:
+        return
+    if dry_run:
+        print(f"  [dry-run] Would update version in {INFO_FILE}")
+    else:
+        path.write_text("".join(lines), encoding="utf-8")
+except OSError as e:
+    warn(f"Could not update version in {INFO_FILE}: {e}")
+```
+
+Here, the `OSError` concern belongs with the file I/O, but it sits 15 lines away from `read_text`. The reader has to scan the entire block to understand what the `except` is guarding. Prefer:
+
+```python
+try:
+    content = path.read_text(encoding="utf-8")
+except OSError as e:
+    warn(f"Could not read {INFO_FILE}: {e}")
+    return
+lines = content.splitlines(keepends=True)
+for i, line in enumerate(lines):
+    if re.match(r"^version\s*:", line):
+        new_line = f"version: {new_version}\n"
+        if lines[i] == new_line:
+            return
+        lines[i] = new_line
+        break
+else:
+    return
+if dry_run:
+    print(f"  [dry-run] Would update version in {INFO_FILE}")
+else:
+    try:
+        path.write_text("".join(lines), encoding="utf-8")
+    except OSError as e:
+        warn(f"Could not write {INFO_FILE}: {e}")
+```
+
+Now each `except` sits right next to the operation it guards, making the error-handling intent immediately clear.
 
 <a id="order"/>
 

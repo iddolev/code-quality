@@ -1,5 +1,19 @@
 # To do list
 
+## Remember
+
+1. Really need to read all the documentation to see all the parts
+   and I write a summary and then ask LLM to check if I missed anything,
+   and before I start ask it to give a summary to help me get a hold of everything
+2. there is also /simplify of claude code!
+   "Review your recently changed files for code reuse, quality, and efficiency issues, then fix them. Spawns three review agents in parallel, aggregates their findings, and applies fixes. Pass text to focus on specific concerns: /simplify focus on memory efficiency"
+   (https://code.claude.com/docs/en/skills)
+3. "Custom commands have been merged into skills. A file at .claude/commands/deploy.md and a skill at .claude/skills/deploy/SKILL.md both create /deploy and work the same way. Your existing .claude/commands/ files keep working. 
+   Skills add optional features: a directory for supporting files, frontmatter to control whether you or Claude invokes them, and the ability for Claude to load them automatically when relevant."
+   (https://code.claude.com/docs/en/skills)
+4. "Claude Code skills follow the Agent Skills open standard, which works across multiple AI tools. Claude Code extends the standard with additional features like invocation control, subagent execution, and dynamic context injection."
+    (https://code.claude.com/docs/en/skills)
+
 ## Steps
 
 1. Look at more tools below to see if to add
