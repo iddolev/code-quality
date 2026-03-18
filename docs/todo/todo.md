@@ -1,5 +1,45 @@
 # To do list
 
+## More rules
+
+1. Always add ALL type hints
+2. Strongly prefer list comprehension with refactoring the body of the for loop e.g.
+
+```python
+def func(text: str) -> list[str]:
+    output = process(text)
+    tags = []
+    for line in output.splitlines():
+        if not line:
+            continue
+        ref = line.split("\t")[1]
+        # Skip ^{} dereferenced tags
+        if ref.endswith("^{}"):
+            continue
+        tag = ref.replace("refs/tags/", "")
+        tags.append(tag)
+    return tags
+```
+
+Better:
+```python
+def _process_line(line: str) -> str | None:
+     if not line:
+         return None
+     ref = line.split("\t")[1]
+     # Skip ^{} dereferenced tags
+     if ref.endswith("^{}"):
+         return None
+     tag = ref.replace("refs/tags/", "")
+     return tag
+   
+def func(text: str) -> list[str]:
+    output = process(text)
+    tags = [_process_line(line) for line in output.splitlines()]
+    filtered = [tag for tag in tags if tag is not None]
+    return filtered
+```
+
 ## Remember
 
 1. Really need to read all the documentation to see all the parts
