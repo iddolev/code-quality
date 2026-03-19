@@ -46,6 +46,8 @@ When in doubt, leave the code unchanged, and ask the user.
    2. [Use Polymorphism](#use-polymorphism)
 7. [Utilities Instead of Code Idioms](#utilities-instead-of-code-idioms)
 8. [Write Logic-Level / High-Level Code](#write-logic-level-high-level-code)
+   1. [Use High-Level Operations](#use-high-level-operations)
+   2. [Use `any` and `all` Instead of Simple For-Loops](#use-any-and-all-instead-of-loops)
 9. [Encapsulation](#encapsulation)
    1. [Put in a class](#put-in-a-class)
    2. [Information Hiding](#information-hiding)
@@ -763,6 +765,10 @@ This idea is a special case of the general principle [Don't Repeat Yourself](#do
 
 Python and other modern programming languages are very high-level and flexible, which means that a lot of the results you would like to achieve can be done using very succinct code that relies on high-level operations. Many such operations are already given to you in the programming language or in some existing library.
 
+<a id="use-high-level-operations"/>
+
+### 8.1. Use High-Level Operations
+
 Here is an example of a good refactoring. Suppose you have a dictionary mapping from a line id to the line's list of elements, and you want to return a dictionary from a line id to the first largest element of the line's elements list. Each element has a start and end position, and the element's length is defined as: `1+end-start`.
 
 The original code:
@@ -816,6 +822,38 @@ class TagElement:
     def __len__(self) -> int:
         return 1 + self.end_pos - self.start_pos
 ```
+
+<a id="use-any-and-all-instead-of-loops"/>
+
+### 8.2. Use `any` and `all` Instead of Simple For-Loops
+
+When you need to check whether a condition holds for any (or all) items in a collection, use Python's built-in `any` and `all` instead of writing a manual loop.
+
+A manual loop forces the reader to trace through the entire body before understanding its purpose. `any` and `all` declare the intent immediately.
+
+For example, instead of:
+
+```python
+def hook_already_installed(hook_list: list) -> bool:
+    """Check if any entry in the hook list already runs our command."""
+    for entry in hook_list:
+        for hook in entry.get("hooks", []):
+            if hook.get("command") == HOOK_COMMAND:
+                return True
+    return False
+```
+
+The reader must read the entire loop body to realize this is just an existence check. Prefer:
+
+```python
+def hook_already_installed(hook_list: list) -> bool:
+    """Check if any entry in the hook list already runs our command."""
+    return any(hook.get("command") == HOOK_COMMAND
+               for entry in hook_list
+               for hook in entry.get("hooks", []))
+```
+
+The intent — "does any hook match?" — is visible at a glance. The same applies to `all` when every item must satisfy the condition.
 
 <a id="encapsulation"/>
 

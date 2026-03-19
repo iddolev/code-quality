@@ -4,6 +4,7 @@
 
 1. Always add ALL type hints
 2. Strongly prefer list comprehension with refactoring the body of the for loop e.g.
+  - Create PYTONIC-CODE.md in rules
 
 ```python
 def func(text: str) -> list[str]:
