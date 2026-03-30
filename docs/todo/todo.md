@@ -2,6 +2,13 @@
 
 ## More rules
 
+All member variables of a class should be private. 
+If someone outside the class needs the value, externalize with a method (perhaps property method).
+
+Never access a class private member directly 
+(this is enforced automatically in some languages e.g. C++, but not in Python, 
+so we need to set this rule explicitly)
+
 1. Always add ALL type hints
 2. Strongly prefer list comprehension with refactoring the body of the for loop e.g.
   - Create PYTONIC-CODE.md in rules
