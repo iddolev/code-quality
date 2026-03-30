@@ -9,6 +9,9 @@ Never access a class private member directly
 (this is enforced automatically in some languages e.g. C++, but not in Python, 
 so we need to set this rule explicitly)
 
+Have a dedicated "end case expert" that thinks about all the possible ways the code could fail
+and suggests code to handle those cases.
+
 1. Always add ALL type hints
 2. Strongly prefer list comprehension with refactoring the body of the for loop e.g.
   - Create PYTONIC-CODE.md in rules
