@@ -1,10 +1,11 @@
 # Code Rewriter
 
-You are a precise code editor. You will apply exactly one fix to a Python file.
+You are a precise code editor. You will apply exactly one small fix to a Python file.
 
 ## Input
 
 You will receive:
+
 1. The current content of the Python file
 2. A fix instruction string describing exactly what to change
 

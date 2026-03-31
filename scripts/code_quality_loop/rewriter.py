@@ -11,15 +11,10 @@ from typing import Any
 
 import anthropic
 
-from common import now_utc
+from common import load_prompt, now_utc
 
-_PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 _MODEL = "claude-opus-4-6"
 _ACTIONABLE = {"implement", "custom"}
-
-
-def _load_prompt(filename: str) -> str:
-    return (_PROMPTS_DIR / filename).read_text(encoding="utf-8")
 
 
 def _effective_fix(issue: dict[str, Any], decision: dict[str, Any]) -> str:
@@ -34,7 +29,7 @@ def _check_relevance(
     client: anthropic.Anthropic,
 ) -> tuple[str, str]:
     """Return (verdict, explanation). verdict is one of: applicable, impossible, no_longer_relevant."""
-    system_prompt = _load_prompt("relevance_check_prompt.md")
+    system_prompt = load_prompt("relevance_check_prompt.md")
     user_content = f"{source_code}\n\n---ISSUE---\n{json.dumps(issue, indent=2)}"
     response = client.messages.create(
         model=_MODEL,
@@ -54,7 +49,7 @@ def _apply_fix(
     client: anthropic.Anthropic,
 ) -> str:
     """Apply the fix instruction and return the new file content."""
-    system_prompt = _load_prompt("rewriter_prompt.md")
+    system_prompt = load_prompt("rewriter_prompt.md")
     user_content = f"{source_code}\n\n---FIX---\n{fix_instruction}"
     response = client.messages.create(
         model=_MODEL,

@@ -11,20 +11,14 @@ from typing import Any
 
 import anthropic
 
-from common import now_utc
+from common import load_prompt, now_utc
 
-_PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 _MODEL = "claude-opus-4-6"
 
 
-def _load_prompt(filename: str) -> str:
-    return (_PROMPTS_DIR / filename).read_text(encoding="utf-8")
-
-
-def run(source_path: Path) -> Path:
-    """Run the critic on *source_path* and return the path to the issues JSON."""
+def run(source_path: Path) -> None:
     source_code = source_path.read_text(encoding="utf-8")
-    system_prompt = _load_prompt("critic_prompt.md")
+    system_prompt = load_prompt("critic_prompt.md")
 
     issues_path = source_path.with_suffix("").with_suffix(".issues.json")
     existing_issues: list[dict[str, Any]] = (
@@ -68,4 +62,3 @@ def run(source_path: Path) -> Path:
     print(f"Code critic: found {len(new_issues)} new issue(s).")
 
     issues_path.write_text(json.dumps(existing_issues + new_issues, indent=2), encoding="utf-8")
-    return issues_path

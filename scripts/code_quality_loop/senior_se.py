@@ -12,9 +12,8 @@ from typing import Any
 
 import anthropic
 
-from common import now_utc
+from common import load_prompt, now_utc
 
-_PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 _MODEL = "claude-opus-4-6"
 
 _TRIAGE_TO_ACTION = {
@@ -23,8 +22,6 @@ _TRIAGE_TO_ACTION = {
 }
 
 
-def _load_prompt(filename: str) -> str:
-    return (_PROMPTS_DIR / filename).read_text(encoding="utf-8")
 
 
 def _triage_issues(
@@ -32,7 +29,7 @@ def _triage_issues(
     client: anthropic.Anthropic,
 ) -> list[dict[str, Any]]:
     """Call Claude to triage all issues. Returns list of triage dicts keyed by id."""
-    system_prompt = _load_prompt("senior_se_triage_prompt.md")
+    system_prompt = load_prompt("senior_se_triage_prompt.md")
     response = client.messages.create(
         model=_MODEL,
         max_tokens=4096,
@@ -100,7 +97,7 @@ def _apply_custom_instruction(
     client: anthropic.Anthropic,
 ) -> dict[str, Any]:
     """Send the issue + user free text to Claude and return a decision record."""
-    system_prompt = _load_prompt("senior_se_custom_prompt.md")
+    system_prompt = load_prompt("senior_se_custom_prompt.md")
     payload = {"issue": issue, "user_input": user_input}
     response = client.messages.create(
         model=_MODEL,

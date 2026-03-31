@@ -35,7 +35,7 @@ The fingerprint must:
 
 Good: "missing error handling in database connect"
 Good: "division by zero risk in calculate_average"
-Bad:  "error on line 42"  (too positional)
+Bad:  "error on line 42"  (too positional, line might change)
 Bad:  "bad code"          (too vague)
 
 ## Severity guide

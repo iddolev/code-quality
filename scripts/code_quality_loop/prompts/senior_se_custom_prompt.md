@@ -6,6 +6,7 @@ provided a custom instruction instead of picking a standard option.
 ## Input
 
 You will receive a JSON object with two keys:
+
 - "issue": the original issue object (id, fingerprint, severity, location,
   description, fix)
 - "user_input": the human's free-text instruction
@@ -16,6 +17,7 @@ Return ONLY a valid JSON object with decision fields only. No prose before or
 after. No markdown fences. Do NOT repeat the issue fields.
 
 The returned object must have:
+
 - "action": always "custom"
 - "custom_fix" (optional): a concrete, specific fix instruction that overrides
   the issue's "fix" field. Include this whenever the human's intent changes what
