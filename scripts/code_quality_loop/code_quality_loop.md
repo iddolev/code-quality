@@ -178,6 +178,7 @@ during the previous rounds.
 ## Error handling
 
 - If any script exits with a non-zero code, show the error output and stop.
-- If `issues.json` is missing after Phase 1, or `decisions.json` is missing after
-  Phase 2, report the problem and stop.
+- If `issues.json` is missing after Phase 1, report the problem and stop.
+- If `decisions.json` is missing after Phase 2, there are no issues to action —
+  skip Phases 3 and 4 and offer to run another critic pass.
 - If the source file does not exist, report this immediately before running anything.
