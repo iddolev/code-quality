@@ -88,6 +88,8 @@ def test_orchestrator_calls_all_phases(tmp_path: Path) -> None:
 
     _NAMES = ("critic", "senior_se", "rewriter", "code_quality_loop")
     saved = {name: _sys.modules.get(name) for name in _NAMES}
+    orch_path = str(Path(__file__).resolve().parents[2] / "scripts" / "code_quality_loop")
+    path_inserted = False
 
     try:
         for name in ("critic", "senior_se", "rewriter"):
@@ -96,15 +98,21 @@ def test_orchestrator_calls_all_phases(tmp_path: Path) -> None:
             _sys.modules[name] = mod
 
         _sys.modules.pop("code_quality_loop", None)
-        orch_path = Path(__file__).resolve().parents[2] / "scripts" / "code_quality_loop"
-        _sys.path.insert(0, str(orch_path))
+        _sys.path.insert(0, orch_path)
+        path_inserted = True
 
         import code_quality_loop
         source = tmp_path / "sample.py"
         code_quality_loop.main(source)
 
+        issues_path = tmp_path / "stub.critic.json"
+        decisions_path = tmp_path / "stub.senior_se.json"
         _sys.modules["critic"].run.assert_called_once_with(source)
+        _sys.modules["senior_se"].run.assert_called_once_with(issues_path)
+        _sys.modules["rewriter"].run.assert_called_once_with(source, decisions_path)
     finally:
+        if path_inserted and orch_path in _sys.path:
+            _sys.path.remove(orch_path)
         for name, original in saved.items():
             if original is None:
                 _sys.modules.pop(name, None)
