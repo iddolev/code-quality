@@ -7,7 +7,7 @@ The `code-simplifier` agent is installed as a Claude Code plugin:
 - **Plugin:** `code-simplifier@claude-plugins-official`
 - **Version:** 1.0.0
 - **Scope:** user
-- **Agent definition file:** `C:\Users\Iddo\.claude\plugins\cache\claude-plugins-official\code-simplifier\1.0.0\agents\code-simplifier.md`
+- **Agent definition file:** `~\.claude\plugins\cache\claude-plugins-official\code-simplifier\1.0.0\agents\code-simplifier.md`
 
 A `simplify` skill is also available, built into the Claude Code binary (not a file on disk).
 
