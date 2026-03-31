@@ -101,6 +101,7 @@ def _apply_custom_instruction(
         messages=[{"role": "user", "content": json.dumps(payload, indent=2)}],
     )
     custom_fields = json.loads(response.content[0].text)
+    custom_fields.pop("action", None)
     return {**base, "action": "custom", **custom_fields}
 
 
