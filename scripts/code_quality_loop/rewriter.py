@@ -1,17 +1,22 @@
-"""Phase 3 — Rewriter.
+"""Phase 4 — Rewriter.
 
-Loads issues.json and decisions.json, joins by id, then for each approved
-decision checks relevance and applies the fix to the source file.
+Loads issues.json and decisions.json, joins by id, then applies the fix
+for a single approved decision (identified by --id).
+
+Usage:
+    python rewriter.py <source_path> --id <issue_id>
 """
 from __future__ import annotations
 
+import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
 import anthropic
 
-from common import load_prompt, now_utc
+from common import decisions_path, issues_path, load_prompt, now_utc
 
 _MODEL = "claude-opus-4-6"
 _ACTIONABLE = {"implement", "custom"}
@@ -21,26 +26,6 @@ def _effective_fix(issue: dict[str, Any], decision: dict[str, Any]) -> str:
     """Return the fix instruction: custom_fix from decision if present, else issue fix."""
     custom_fix = decision.get("custom_fix")
     return custom_fix if custom_fix is not None else issue["fix"]
-
-
-def _check_relevance(
-    source_code: str,
-    issue: dict[str, Any],
-    client: anthropic.Anthropic,
-) -> tuple[str, str]:
-    """Return (verdict, explanation). verdict is one of: applicable, impossible, no_longer_relevant."""
-    system_prompt = load_prompt("relevance_check_prompt.md")
-    user_content = f"{source_code}\n\n---ISSUE---\n{json.dumps(issue, indent=2)}"
-    response = client.messages.create(
-        model=_MODEL,
-        max_tokens=512,
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_content}],
-    )
-    raw = response.content[0].text.strip()
-    first_line = raw.splitlines()[0].strip()
-    explanation = "\n".join(raw.splitlines()[1:]).strip()
-    return first_line, explanation
 
 
 def _apply_fix(
@@ -64,42 +49,38 @@ def _save_decisions(decisions: list[dict[str, Any]], decisions_path: Path) -> No
     decisions_path.write_text(json.dumps(decisions, indent=2), encoding="utf-8")
 
 
-def run(source_path: Path, decisions_path: Path) -> None:
-    """Apply all approved fixes from *decisions_path* to *source_path*."""
-    decisions = json.loads(decisions_path.read_text(encoding="utf-8"))
+def run(source_path: Path, issue_id: int) -> None:
+    """Apply the approved fix for *issue_id* to *source_path*."""
+    dp = decisions_path(source_path)
+    ip = issues_path(source_path)
 
-    issues_path = decisions_path.with_name(
-        decisions_path.name.replace(".decisions.json", ".issues.json")
-    )
-    issues = json.loads(issues_path.read_text(encoding="utf-8"))
+    decisions = json.loads(dp.read_text(encoding="utf-8"))
+    issues = json.loads(ip.read_text(encoding="utf-8"))
     issues_by_id = {issue["id"]: issue for issue in issues}
 
-    client = anthropic.Anthropic()
+    decision = next(
+        (d for d in decisions if d["id"] == issue_id and d["action"] in _ACTIONABLE and d["status"] == "pending"),
+        None,
+    )
+    if decision is None:
+        print(f"Rewriter: no pending actionable decision found for id {issue_id}.")
+        sys.exit(1)
 
-    actionable = [d for d in decisions if d["action"] in _ACTIONABLE and d["status"] == "pending"]
-    total = len(actionable)
-    applied = 0
+    issue = issues_by_id[issue_id]
+    source_code = source_path.read_text(encoding="utf-8")
+    fix_instruction = _effective_fix(issue, decision)
+    print(f"Rewriter: applying fix for \"{issue['fingerprint']}\" ...")
+    new_source = _apply_fix(source_code, fix_instruction, anthropic.Anthropic())
+    source_path.write_text(new_source, encoding="utf-8")
+    decision["status"] = "done"
+    decision["last_updated"] = now_utc()
+    _save_decisions(decisions, dp)
+    print(f"Rewriter: done.")
 
-    for decision in actionable:
-        issue = issues_by_id[decision["id"]]
-        source_code = source_path.read_text(encoding="utf-8")
-        print(f"Rewriter: checking relevance of \"{issue['fingerprint']}\" ...")
-        verdict, explanation = _check_relevance(source_code, issue, client)
 
-        if verdict in ("impossible", "no_longer_relevant"):
-            decision["status"] = verdict
-            decision["explanation"] = explanation
-            decision["last_updated"] = now_utc()
-            _save_decisions(decisions, decisions_path)
-            print(f"Rewriter: skipped ({verdict}): \"{issue['fingerprint']}\"")
-            continue
-
-        fix_instruction = _effective_fix(issue, decision)
-        print(f"Rewriter: applying fix for \"{issue['fingerprint']}\" ...")
-        new_source = _apply_fix(source_code, fix_instruction, client)
-        source_path.write_text(new_source, encoding="utf-8")
-        decision["status"] = "done"
-        decision["last_updated"] = now_utc()
-        _save_decisions(decisions, decisions_path)
-        applied += 1
-        print(f"Rewriter: applied fix {applied}/{total}: \"{issue['fingerprint']}\"")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("source_path", type=Path)
+    parser.add_argument("--id", dest="issue_id", type=int, required=True)
+    args = parser.parse_args()
+    run(args.source_path, args.issue_id)

@@ -1,18 +1,27 @@
 """Phase 2 — Senior Software Engineer.
 
-Triages issues autonomously via LLM, then consults the human for
-escalated (needs_human_approval) issues. Writes a decisions JSON that
-contains only decision fields linked to issues by id.
+Two modes:
+
+  default  — ages skip_for_now → skipped_re_ask, then triages new issues
+  --next   — finds the next pending implement/custom decision, checks
+             relevance, and prints either:
+               NEXT <json>   the issue to pass to the rewriter
+               DONE <n>      no more issues; n = skip_for_now count
+
+Usage:
+    python senior_se.py <source_path>
+    python senior_se.py <source_path> --next
 """
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 from typing import Any
 
 import anthropic
 
-from common import load_prompt, now_utc
+from common import decisions_path, issues_path, load_prompt, log_append, now_utc
 
 _MODEL = "claude-opus-4-6"
 
@@ -22,7 +31,39 @@ _TRIAGE_TO_ACTION = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Relevance check
+# ---------------------------------------------------------------------------
 
+def _check_relevance(
+    source_code: str,
+    issue: dict[str, Any],
+    client: anthropic.Anthropic,
+) -> tuple[str, str]:
+    """Return (verdict, extra). verdict is one of:
+      applicable         — issue still exists, fix can be applied as-is
+      needs_update       — issue still exists but description/location have shifted;
+                           extra contains the updated fields as a raw string
+      impossible         — fix cannot be applied (location/structure gone)
+      no_longer_relevant — issue already resolved by a prior fix
+    """
+    system_prompt = load_prompt("relevance_check_prompt.md")
+    user_content = f"{source_code}\n\n---ISSUE---\n{json.dumps(issue, indent=2)}"
+    response = client.messages.create(
+        model=_MODEL,
+        max_tokens=512,
+        system=system_prompt,
+        messages=[{"role": "user", "content": user_content}],
+    )
+    raw = response.content[0].text.strip()
+    first_line = raw.splitlines()[0].strip()
+    extra = "\n".join(raw.splitlines()[1:]).strip()
+    return first_line, extra
+
+
+# ---------------------------------------------------------------------------
+# Triage
+# ---------------------------------------------------------------------------
 
 def _triage_issues(
     issues: list[dict[str, Any]],
@@ -42,146 +83,161 @@ def _triage_issues(
     return json.loads(text)
 
 
-def _consult_human(
-    issue: dict[str, Any],
-    senior_se_reasoning: str,
-    issue_index: int,
-    total: int,
-    client: anthropic.Anthropic,
-    *,
-    header_note: str = "⚠ Needs your input",
-) -> dict[str, Any]:
-    """Display the issue to the human and return a decision record (id + decision fields only)."""
-    print(f"\n{'─' * 53}")
-    print(f"Issue {issue_index}/{total}  [{issue['severity']}]  {header_note}")
-    print(f"Location:    {issue['location']}")
-    print(f"Fingerprint: {issue['fingerprint']}")
-    print(f"\nDescription: {issue['description']}")
-    print(f"\nFix: {issue['fix']}")
-    print(f"\nSenior SE note: {senior_se_reasoning}")
-    print(f"{'─' * 53}")
-    print("  1) Do it")
-    print("  2) Don't do it")
-    print("  3) Skip for now")
-    print("  4) Something else")
+# ---------------------------------------------------------------------------
+# Mode: default — age skips + triage new issues
+# ---------------------------------------------------------------------------
 
-    while True:
-        choice = input("> ").strip()
-        if choice in ("1", "2", "3", "4"):
-            break
-        print("Please enter 1, 2, 3, or 4.")
-
-    base = {
-        "id": issue["id"],
-        "decision_by": "human",
-        "senior_se_reasoning": senior_se_reasoning,
-        "status": "pending",
-        "last_updated": now_utc(),
-    }
-
-    if choice == "1":
-        return {**base, "action": "implement"}
-    if choice == "2":
-        return {**base, "action": "no"}
-    if choice == "3":
-        return {**base, "action": "skip_for_now"}
-
-    user_input = input("Describe what you'd like instead:\n> ").strip()
-    return _apply_custom_instruction(issue, user_input, base, client)
-
-
-def _apply_custom_instruction(
-    issue: dict[str, Any],
-    user_input: str,
-    base: dict[str, Any],
-    client: anthropic.Anthropic,
-) -> dict[str, Any]:
-    """Send the issue + user free text to Claude and return a decision record."""
-    system_prompt = load_prompt("senior_se_custom_prompt.md")
-    payload = {"issue": issue, "user_input": user_input}
-    response = client.messages.create(
-        model=_MODEL,
-        max_tokens=2048,
-        system=system_prompt,
-        messages=[{"role": "user", "content": json.dumps(payload, indent=2)}],
-    )
-    text = response.content[0].text.strip()
-    if text.startswith("```"):
-        text = text.split("\n", 1)[1].rsplit("```", 1)[0]
-    custom_fields = json.loads(text)
-    custom_fields.pop("action", None)
-    return {**base, "action": "custom", **custom_fields}
-
-
-def run(issues_path: Path) -> Path:
-    """Run the senior SE phase and return the path to the decisions JSON."""
-    issues = json.loads(issues_path.read_text(encoding="utf-8"))
-    decisions_path = issues_path.with_name(
-        issues_path.name.replace(".issues.json", ".decisions.json")
-    )
+def run(source_path: Path) -> None:
+    """Age skip_for_now → skipped_re_ask, then triage all new issues."""
+    ip = issues_path(source_path)
+    dp = decisions_path(source_path)
+    issues = json.loads(ip.read_text(encoding="utf-8"))
 
     existing_decisions: list[dict[str, Any]] = (
-        json.loads(decisions_path.read_text(encoding="utf-8")) if decisions_path.exists() else []
+        json.loads(dp.read_text(encoding="utf-8")) if dp.exists() else []
     )
-    issues_by_id = {issue["id"]: issue for issue in issues}
+
+    # Age any skip_for_now decisions from previous runs
+    aged = 0
+    for d in existing_decisions:
+        if d["action"] == "skip_for_now":
+            d["action"] = "skipped_re_ask"
+            d["last_updated"] = now_utc()
+            aged += 1
+    if aged:
+        dp.write_text(json.dumps(existing_decisions, indent=2), encoding="utf-8")
+        print(f"Senior SE: aged {aged} skip_for_now → skipped_re_ask.")
+
     decided_ids = {d["id"] for d in existing_decisions}
-    pending = [d for d in existing_decisions if d["status"] == "pending"]
     new_issues = [issue for issue in issues if issue["id"] not in decided_ids]
 
-    if not pending and not new_issues:
-        print("Senior SE: all issues already have decisions.")
-        return decisions_path
+    if not new_issues:
+        print("Senior SE: no new issues to triage.")
+        return
 
+    print(f"Senior SE: triaging {len(new_issues)} new issue(s) ...")
     client = anthropic.Anthropic()
+    triage_results = _triage_issues(new_issues, client)
+    triage_by_id = {t["id"]: t for t in triage_results}
+    print("Senior SE: triage complete.")
+
     decisions = list(existing_decisions)
-    total = len(pending) + len(new_issues)
-    counter = 0
+    auto_implement = auto_no = needs_human = 0
 
-    # Re-present previously unresolved (pending) issues
-    if pending:
-        print(f"Senior SE: re-presenting {len(pending)} unresolved issue(s) from previous run ...")
-        for decision in pending:
-            issue = issues_by_id[decision["id"]]
-            counter += 1
-            header = (
-                "⏭ Previously skipped — revisiting"
-                if decision["action"] == "skip_for_now"
-                else "⏸ Unresolved from previous run"
-            )
-            new_record = _consult_human(
-                issue, decision["senior_se_reasoning"], counter, total, client,
-                header_note=header,
-            )
-            idx = next(i for i, d in enumerate(decisions) if d["id"] == decision["id"])
-            decisions[idx] = new_record
-            decisions_path.write_text(json.dumps(decisions, indent=2), encoding="utf-8")
+    for issue in new_issues:
+        triage = triage_by_id[issue["id"]]
+        triage_label = triage["triage"]
+        reasoning = triage["senior_se_reasoning"]
 
-    # Triage and decide on new issues
-    if new_issues:
-        print(f"Senior SE: triaging {len(new_issues)} new issue(s) ...")
-        triage_results = _triage_issues(new_issues, client)
-        triage_by_id = {t["id"]: t for t in triage_results}
-        print("Senior SE: triage complete.")
+        action = _TRIAGE_TO_ACTION.get(triage_label, "needs_human_approval")
+        record: dict[str, Any] = {
+            "id": issue["id"],
+            "action": action,
+            "decision_by": "senior_se",
+            "senior_se_reasoning": reasoning,
+            "status": "pending",
+            "last_updated": now_utc(),
+        }
+        decisions.append(record)
+        dp.write_text(json.dumps(decisions, indent=2), encoding="utf-8")
 
-        for issue in new_issues:
-            triage = triage_by_id[issue["id"]]
-            triage_label = triage["triage"]
-            reasoning = triage["senior_se_reasoning"]
-            counter += 1
+        if action == "implement":
+            auto_implement += 1
+        elif action == "no":
+            auto_no += 1
+        else:
+            needs_human += 1
 
-            if triage_label in _TRIAGE_TO_ACTION:
-                record: dict[str, Any] = {
-                    "id": issue["id"],
-                    "action": _TRIAGE_TO_ACTION[triage_label],
-                    "decision_by": "senior_se",
-                    "senior_se_reasoning": reasoning,
-                    "status": "pending",
-                    "last_updated": now_utc(),
-                }
-            else:
-                record = _consult_human(issue, reasoning, counter, total, client)
+    print(
+        f"Senior SE: {auto_implement} auto-approved, "
+        f"{auto_no} auto-rejected, "
+        f"{needs_human} need human review."
+    )
 
-            decisions.append(record)
-            decisions_path.write_text(json.dumps(decisions, indent=2), encoding="utf-8")
 
-    return decisions_path
+# ---------------------------------------------------------------------------
+# Mode: --next — relevance check + emit next issue for rewriter
+# ---------------------------------------------------------------------------
+
+def _parse_needs_update(extra: str) -> dict[str, str]:
+    """Parse 'description: ...' and 'location: ...' lines from needs_update extra."""
+    result: dict[str, str] = {}
+    for line in extra.splitlines():
+        if line.startswith("description:"):
+            result["description"] = line[len("description:"):].strip()
+        elif line.startswith("location:"):
+            result["location"] = line[len("location:"):].strip()
+    return result
+
+
+def run_next(source_path: Path) -> None:
+    """Find the next pending implement/custom decision, check relevance, and print result."""
+    ip = issues_path(source_path)
+    dp = decisions_path(source_path)
+
+    issues = json.loads(ip.read_text(encoding="utf-8"))
+    decisions = json.loads(dp.read_text(encoding="utf-8"))
+    issues_by_id = {issue["id"]: issue for issue in issues}
+
+    source_code = source_path.read_text(encoding="utf-8")
+    client = anthropic.Anthropic()
+
+    actionable = [
+        d for d in decisions
+        if d["action"] in ("implement", "custom") and d["status"] == "pending"
+    ]
+
+    for decision in actionable:
+        issue = issues_by_id[decision["id"]]
+        log_append(source_path, {"event": "relevance_check", "fingerprint": issue["fingerprint"]})
+        verdict, extra = _check_relevance(source_code, issue, client)
+
+        if verdict == "applicable":
+            print(f"NEXT {json.dumps(issue)}")
+            return
+
+        if verdict == "needs_update":
+            updates = _parse_needs_update(extra)
+            # Preserve old values in history before overwriting
+            history_entry = {
+                "description": issue["description"],
+                "location": issue["location"],
+                "timestamp": now_utc(),
+            }
+            issue.setdefault("history", []).append(history_entry)
+            issue.update(updates)
+            issue["last_updated"] = now_utc()
+            ip.write_text(json.dumps(issues, indent=2), encoding="utf-8")
+            log_append(source_path, {
+                "event": "issue_updated",
+                "fingerprint": issue["fingerprint"],
+                "old": history_entry,
+                "new": updates,
+            })
+            print(f"NEXT {json.dumps(issue)}")
+            return
+
+        # impossible or no_longer_relevant — mark and continue
+        decision["status"] = verdict
+        decision["last_updated"] = now_utc()
+        dp.write_text(json.dumps(decisions, indent=2), encoding="utf-8")
+        log_append(source_path, {"event": "relevance_skipped", "fingerprint": issue["fingerprint"], "verdict": verdict})
+
+    skip_for_now_count = sum(1 for d in decisions if d["action"] == "skip_for_now")
+    print(f"DONE {skip_for_now_count}")
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("source_path", type=Path)
+    parser.add_argument("--next", dest="next_mode", action="store_true")
+    args = parser.parse_args()
+
+    if args.next_mode:
+        run_next(args.source_path)
+    else:
+        run(args.source_path)

@@ -123,11 +123,20 @@ Call Senior SE to get the next issue to apply:
 python scripts/code_quality_loop/senior_se.py --next <source_path>
 ```
 
-The script finds the next pending `implement` or `custom` decision, checks whether
-it is still relevant against the current source file, and writes one of:
+The script finds the next pending `implement` or `custom` decision, runs a
+relevance check against the current source file, and writes one of:
 
-- `NEXT <json>` — the next relevant issue to apply
+- `NEXT <json>` — the next issue to apply (possibly with updated description/location)
 - `DONE <n>` — no more issues; `n` is the count of `skip_for_now` decisions still pending
+
+The relevance check has four possible verdicts. The script handles them internally:
+
+| Verdict | What the script does |
+|---|---|
+| `applicable` | Returns `NEXT` with the original issue unchanged |
+| `needs_update` | Appends `{description, location, timestamp}` to a `history` list on the issue record in `issues.json` (preserving the old values), then overwrites description and location with the updated values, and returns `NEXT` with the refreshed issue |
+| `no_longer_relevant` | Marks the decision as `no_longer_relevant` in `decisions.json`, moves to the next decision |
+| `impossible` | Marks the decision as `impossible` in `decisions.json`, moves to the next decision |
 
 If the response is `NEXT <json>`, run the rewriter for that issue:
 

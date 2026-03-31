@@ -11,7 +11,7 @@ from typing import Any
 
 import anthropic
 
-from common import load_prompt, now_utc
+from common import decisions_path, issues_path, load_prompt, now_utc
 
 _MODEL = "claude-opus-4-6"
 
@@ -20,16 +20,16 @@ def run(source_path: Path) -> None:
     source_code = source_path.read_text(encoding="utf-8")
     system_prompt = load_prompt("critic_prompt.md")
 
-    issues_path = source_path.with_suffix("").with_suffix(".issues.json")
+    ip = issues_path(source_path)
     existing_issues: list[dict[str, Any]] = (
-        json.loads(issues_path.read_text(encoding="utf-8")) if issues_path.exists() else []
+        json.loads(ip.read_text(encoding="utf-8")) if ip.exists() else []
     )
     next_id = max((issue["id"] for issue in existing_issues), default=0) + 1
 
-    decisions_path = source_path.with_suffix("").with_suffix(".decisions.json")
+    dp = decisions_path(source_path)
     done_ids: set[int] = set()
-    if decisions_path.exists():
-        decisions = json.loads(decisions_path.read_text(encoding="utf-8"))
+    if dp.exists():
+        decisions = json.loads(dp.read_text(encoding="utf-8"))
         done_ids = {d["id"] for d in decisions if d["status"] == "done"}
     known_unresolved = [i for i in existing_issues if i["id"] not in done_ids]
 
@@ -61,4 +61,4 @@ def run(source_path: Path) -> None:
     ]
     print(f"Code critic: found {len(new_issues)} new issue(s).")
 
-    issues_path.write_text(json.dumps(existing_issues + new_issues, indent=2), encoding="utf-8")
+    ip.write_text(json.dumps(existing_issues + new_issues, indent=2), encoding="utf-8")
