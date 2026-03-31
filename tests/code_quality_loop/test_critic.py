@@ -86,17 +86,27 @@ def test_orchestrator_calls_all_phases(tmp_path: Path) -> None:
     import types
     import sys as _sys
 
-    for name in ("critic", "senior_se", "rewriter"):
-        mod = types.ModuleType(name)
-        mod.run = MagicMock(return_value=tmp_path / f"stub.{name}.json")  # type: ignore[attr-defined]
-        _sys.modules[name] = mod
+    _NAMES = ("critic", "senior_se", "rewriter", "code_quality_loop")
+    saved = {name: _sys.modules.get(name) for name in _NAMES}
 
-    _sys.modules.pop("code_quality_loop", None)
-    orch_path = Path(__file__).resolve().parents[2] / "scripts" / "code_quality_loop"
-    _sys.path.insert(0, str(orch_path))
+    try:
+        for name in ("critic", "senior_se", "rewriter"):
+            mod = types.ModuleType(name)
+            mod.run = MagicMock(return_value=tmp_path / f"stub.{name}.json")  # type: ignore[attr-defined]
+            _sys.modules[name] = mod
 
-    import code_quality_loop
-    source = tmp_path / "sample.py"
-    code_quality_loop.main(source)
+        _sys.modules.pop("code_quality_loop", None)
+        orch_path = Path(__file__).resolve().parents[2] / "scripts" / "code_quality_loop"
+        _sys.path.insert(0, str(orch_path))
 
-    _sys.modules["critic"].run.assert_called_once_with(source)
+        import code_quality_loop
+        source = tmp_path / "sample.py"
+        code_quality_loop.main(source)
+
+        _sys.modules["critic"].run.assert_called_once_with(source)
+    finally:
+        for name, original in saved.items():
+            if original is None:
+                _sys.modules.pop(name, None)
+            else:
+                _sys.modules[name] = original
