@@ -23,4 +23,7 @@ def main(source_path: Path) -> None:
 
 
 if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python code_quality_loop.py <path/to/file.py>")
+        sys.exit(1)
     main(Path(sys.argv[1]))
