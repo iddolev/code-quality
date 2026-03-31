@@ -13,13 +13,14 @@ id, fingerprint, severity, location, description, fix.
 Return ONLY a valid JSON array. No prose before or after. No markdown fences.
 One entry per input issue, in the same order.
 
-Each entry must have exactly these fields:
+Each entry must have exactly these fields: `id` (integer), `triage` (string),
+`senior_se_reasoning` (string).
 
-{
-  "id":                  <integer, copied exactly from the input issue>,
-  "triage":              "implement" | "no" | "needs_human_approval",
-  "senior_se_reasoning": "<one sentence explaining the decision>"
-}
+Example of one entry:
+{"id": 3, "triage": "implement", "senior_se_reasoning": "Straightforward guard clause with no trade-offs."}
+
+`triage` must be one of: `"implement"`, `"no"`, `"needs_human_approval"`.
+`id` must be the integer copied exactly from the input issue — not a string, not null.
 
 ## Triage rules
 

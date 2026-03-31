@@ -26,3 +26,5 @@ no_longer_relevant
   removed by a prior fix).
 - no_longer_relevant: The issue has already been resolved by a prior fix (the
   problem described no longer exists in the code).
+
+If genuinely uncertain between `impossible` and `no_longer_relevant`, return `impossible`.

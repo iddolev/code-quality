@@ -19,3 +19,4 @@ No markdown fences. No explanation.
 - Do not fix anything else, even if you notice other issues.
 - Preserve all formatting, comments, docstrings, and unrelated code exactly.
 - If the fix instruction is empty or says to do nothing, return the file unchanged.
+- Preserve the exact trailing newline character(s) of the original file.
