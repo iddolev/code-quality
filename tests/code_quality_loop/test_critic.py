@@ -77,3 +77,26 @@ def test_run_returns_issues_path_next_to_source(tmp_path: Path) -> None:
 
     assert result_path.parent == tmp_path
     assert result_path.name == "mymodule.issues.json"
+
+
+# ── orchestrator smoke test ───────────────────────────────────────────────────
+
+def test_orchestrator_calls_all_phases(tmp_path: Path) -> None:
+    """The orchestrator imports critic, senior_se, rewriter and calls run() on each."""
+    import types
+    import sys as _sys
+
+    for name in ("critic", "senior_se", "rewriter"):
+        mod = types.ModuleType(name)
+        mod.run = MagicMock(return_value=tmp_path / f"stub.{name}.json")  # type: ignore[attr-defined]
+        _sys.modules[name] = mod
+
+    _sys.modules.pop("code_quality_loop", None)
+    orch_path = Path(__file__).resolve().parents[2] / "scripts" / "code_quality_loop"
+    _sys.path.insert(0, str(orch_path))
+
+    import code_quality_loop
+    source = tmp_path / "sample.py"
+    code_quality_loop.main(source)
+
+    _sys.modules["critic"].run.assert_called_once_with(source)
