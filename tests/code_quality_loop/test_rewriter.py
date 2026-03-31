@@ -92,7 +92,7 @@ def test_custom_fix_overrides_issue_fix(tmp_path: Path) -> None:
 
         rewriter.run(source, decisions_path)
 
-    # First call is relevance check, second is fix application
+    # call_args[0] = relevance check call, call_args[1] = fix application call
     fix_call_content = call_args[1]["messages"][0]["content"]
     assert "raise ValueError" in fix_call_content
     assert "return 0.0" not in fix_call_content
@@ -166,3 +166,26 @@ def test_fix_counter_only_increments_on_done(tmp_path: Path, capsys) -> None:
 
     captured = capsys.readouterr()
     assert "1/2" in captured.out
+
+
+def test_empty_string_custom_fix_is_used_not_overridden(tmp_path: Path) -> None:
+    # custom_fix="" means "apply nothing" — should NOT fall back to issue fix
+    custom_decision = {**DECISION_IMPLEMENT, "action": "custom", "custom_fix": ""}
+    source, decisions_path = _write_files(tmp_path, [ISSUE], [custom_decision])
+
+    call_args = []
+
+    def capturing_create(**kwargs):
+        call_args.append(kwargs)
+        return _make_fake_response(FIXED_SOURCE)
+
+    with patch("rewriter.anthropic.Anthropic") as mock_cls:
+        mock_client = MagicMock()
+        mock_cls.return_value = mock_client
+        mock_client.messages.create.side_effect = capturing_create
+
+        rewriter.run(source, decisions_path)
+
+    # Second call is fix application — empty string should be passed, not issue fix
+    fix_call_content = call_args[1]["messages"][0]["content"]
+    assert "return 0.0" not in fix_call_content  # issue fix NOT used

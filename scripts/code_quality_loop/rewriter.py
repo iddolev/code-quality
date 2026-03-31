@@ -22,7 +22,8 @@ def _load_prompt(filename: str) -> str:
 
 def _effective_fix(issue: dict[str, Any], decision: dict[str, Any]) -> str:
     """Return the fix instruction: custom_fix from decision if present, else issue fix."""
-    return decision.get("custom_fix") or issue["fix"]
+    custom_fix = decision.get("custom_fix")
+    return custom_fix if custom_fix is not None else issue["fix"]
 
 
 def _check_relevance(
