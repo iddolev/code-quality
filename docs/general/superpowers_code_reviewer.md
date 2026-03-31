@@ -69,3 +69,10 @@ A: It is defined as an **agent**, not a skill. It appears in the Agent tool's av
 
 **Q: Where exactly are the "Code Quality" instructions?**
 A: `C:\Users\Iddo\.claude\plugins\cache\claude-plugins-official\superpowers\5.0.6\agents\code-reviewer.md`, lines 18–23.
+
+---
+
+## My opinion
+
+Its scope is way too broad, does too many things, and probably not high quality.
+E.g. the SOLID part requires a separate agent/skill or even more than one.

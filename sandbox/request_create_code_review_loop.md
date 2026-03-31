@@ -1,0 +1,4 @@
+I want to create a mechanism (not sure if it's a claude code command/skill/agents, or just a markdown specifying some workflow) that does the following: There is a "code-critic", a
+  "senior software engineer" and a "code re-writer". The input to this arrangement is a python file. The code-critic produces a JSON file with issues to be fixed. The
+  senior-software-engineer decides which suggested fix is necessary and clear to implement (and then calls the code-rewriter" to implement), which suggested fix requires human approval
+  because it's complex or unclear, and which suggested fix should not be done.
