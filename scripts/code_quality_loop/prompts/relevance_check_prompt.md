@@ -9,7 +9,7 @@ by prior fixes).
 You will receive:
 
 1. The current content of the Python file
-2. A JSON object describing the issue (id, fingerprint, location, description, fix)
+2. A JSON object describing the issue (id, fingerprint, severity, location, description, fix)
 
 ## Output
 

@@ -16,7 +16,7 @@ from typing import Any
 
 import anthropic
 
-from common import decisions_path, issues_path, load_prompt, now_utc
+from common import decisions_path, issues_path, load_prompt, now_utc, strip_markdown_fence
 
 _MODEL = "claude-opus-4-6"
 _ACTIONABLE = {"implement", "custom"}
@@ -42,11 +42,11 @@ def _apply_fix(
         system=system_prompt,
         messages=[{"role": "user", "content": user_content}],
     )
-    return response.content[0].text
+    return strip_markdown_fence(response.content[0].text)
 
 
-def _save_decisions(decisions: list[dict[str, Any]], decisions_path: Path) -> None:
-    decisions_path.write_text(json.dumps(decisions, indent=2), encoding="utf-8")
+def _save_decisions(decisions: list[dict[str, Any]], path: Path) -> None:
+    path.write_text(json.dumps(decisions, indent=2), encoding="utf-8")
 
 
 def run(source_path: Path, issue_id: int) -> None:

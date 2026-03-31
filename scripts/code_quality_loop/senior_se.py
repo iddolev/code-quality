@@ -6,7 +6,7 @@ Two modes:
   --next   — finds the next pending implement/custom decision, checks
              relevance, and prints either:
                NEXT <json>   the issue to pass to the rewriter
-               DONE <n>      no more issues; n = skip_for_now count
+               DONE <n>      no more issues; n = deferred (skip_for_now/skipped_re_ask) count
 
 Usage:
     python senior_se.py <source_path>
@@ -21,7 +21,7 @@ from typing import Any
 
 import anthropic
 
-from common import decisions_path, issues_path, load_prompt, log_append, now_utc
+from common import decisions_path, issues_path, load_prompt, log_append, now_utc, strip_markdown_fence
 
 _MODEL = "claude-opus-4-6"
 
@@ -56,7 +56,7 @@ def _check_relevance(
         messages=[{"role": "user", "content": user_content}],
     )
     raw = response.content[0].text.strip()
-    first_line = raw.splitlines()[0].strip()
+    first_line = raw.splitlines()[0].strip().lower()
     extra = "\n".join(raw.splitlines()[1:]).strip()
     return first_line, extra
 
@@ -77,10 +77,7 @@ def _triage_issues(
         system=system_prompt,
         messages=[{"role": "user", "content": json.dumps(issues, indent=2)}],
     )
-    text = response.content[0].text.strip()
-    if text.startswith("```"):
-        text = text.split("\n", 1)[1].rsplit("```", 1)[0]
-    return json.loads(text)
+    return json.loads(strip_markdown_fence(response.content[0].text))
 
 
 # ---------------------------------------------------------------------------
@@ -223,7 +220,10 @@ def run_next(source_path: Path) -> None:
         dp.write_text(json.dumps(decisions, indent=2), encoding="utf-8")
         log_append(source_path, {"event": "relevance_skipped", "fingerprint": issue["fingerprint"], "verdict": verdict})
 
-    skip_for_now_count = sum(1 for d in decisions if d["action"] == "skip_for_now")
+    skip_for_now_count = sum(
+        1 for d in decisions
+        if d["action"] in ("skip_for_now", "skipped_re_ask") and d["status"] == "pending"
+    )
     print(f"DONE {skip_for_now_count}")
 
 

@@ -5,10 +5,10 @@ actionable issues in the code you are given.
 
 ## Known issues
 
-The user message may contain a `---KNOWN ISSUES---` section after the source
-code. These issues are already tracked. Do NOT re-report any issue whose
-fingerprint or substance matches one in that list. Only report issues that are
-genuinely new and not already captured there.
+The user message may contain a `---KNOWN ISSUES (do not re-report these)---`
+section after the source code. These issues are already tracked. Do NOT re-report
+any issue whose fingerprint or substance matches one in that list. Only report
+issues that are genuinely new and not already captured there.
 
 ## Output format
 

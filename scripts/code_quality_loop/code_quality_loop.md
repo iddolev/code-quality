@@ -11,9 +11,10 @@ The user triggers this workflow with an input argument which is a source file pa
 /code-quality path/to/file.py
 ```
 
-All four phases operate on sibling JSON files next to the source code file:
+All four phases operate on sibling files next to the source code file:
 - `<file>.issues.json` — critic output
 - `<file>.decisions.json` — triage + human decisions
+- `<file>.log.jsonl` — append-only structured log of relevance checks and issue updates
 
 ---
 
@@ -25,8 +26,9 @@ Run the critic script to detect new issues:
 python scripts/code_quality_loop/critic.py <source_path>
 ```
 
-The script reads the source file, calls Claude, and appends any new issues to
-`<file>.issues.json`. It skips issues already tracked (by fingerprint).
+The script reads the source file and passes it to Claude along with any currently
+open issues (so the LLM does not re-report them). New issues are appended to
+`<file>.issues.json` with sequential ids.
 
 Report to the user: how many new issues were found and how many were already known.
 
@@ -93,14 +95,20 @@ decision, or decides to skip the issue for now.
 The user may want to ask questions, explore alternatives, or look at related
 code — engage with all of that before asking for a final call.
 
-Once a decision is reached, record it immediately in `decisions.json`:
+Once a decision is reached, update the existing record in `decisions.json` by finding
+it by `id` and applying these fields:
 
-| User intent | `action` to record |
-|---|---|
-| Yes / do it / approve | `implement` |
-| No / don't do it / reject | `no` |
-| Skip / later / not now | `skip_for_now` |
-| Do something different | `custom` — capture the instruction in `custom_fix` |
+| User intent | `action` | notes |
+|---|---|---|
+| Yes / do it / approve | `implement` | |
+| No / don't do it / reject | `no` | |
+| Skip / later / not now | `skip_for_now` | |
+| Do something different | `custom` | also set `custom_fix` to the instruction |
+
+In all cases also set:
+- `decision_by: "human"`
+- `last_updated: <current UTC timestamp>`
+- keep `status: "pending"` (the rewriter will mark it `done`)
 
 After recording, move to the next issue.
 
@@ -120,14 +128,14 @@ fix changes the source file, which affects the relevance of subsequent issues.
 Call Senior SE to get the next issue to apply:
 
 ```bash
-python scripts/code_quality_loop/senior_se.py --next <source_path>
+python scripts/code_quality_loop/senior_se.py <source_path> --next
 ```
 
 The script finds the next pending `implement` or `custom` decision, runs a
 relevance check against the current source file, and writes one of:
 
 - `NEXT <json>` — the next issue to apply (possibly with updated description/location)
-- `DONE <n>` — no more issues; `n` is the count of `skip_for_now` decisions still pending
+- `DONE <n>` — no more issues; `n` is the count of deferred (`skip_for_now` or `skipped_re_ask`) decisions still pending
 
 The relevance check has four possible verdicts. The script handles them internally:
 
@@ -152,7 +160,7 @@ When Senior SE responds with `DONE`, report to the user:
 
 - How many fixes were applied
 - How many were skipped as no longer relevant
-- How many `skip_for_now` decisions remain for a future run
+- How many deferred decisions remain for a future run (the `n` from `DONE <n>`)
 
 If there are no `implement` or `custom` decisions at all, skip this phase.
 
