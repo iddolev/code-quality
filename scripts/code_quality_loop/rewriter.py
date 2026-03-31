@@ -11,6 +11,8 @@ from typing import Any
 
 import anthropic
 
+from common import now_utc
+
 _PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 _MODEL = "claude-opus-4-6"
 _ACTIONABLE = {"implement", "custom"}
@@ -79,7 +81,7 @@ def run(source_path: Path, decisions_path: Path) -> None:
 
     client = anthropic.Anthropic()
 
-    actionable = [d for d in decisions if d["action"] in _ACTIONABLE]
+    actionable = [d for d in decisions if d["action"] in _ACTIONABLE and d["status"] == "pending"]
     total = len(actionable)
     applied = 0
 
@@ -92,6 +94,7 @@ def run(source_path: Path, decisions_path: Path) -> None:
         if verdict in ("impossible", "no_longer_relevant"):
             decision["status"] = verdict
             decision["explanation"] = explanation
+            decision["last_updated"] = now_utc()
             _save_decisions(decisions, decisions_path)
             print(f"Rewriter: skipped ({verdict}): \"{issue['fingerprint']}\"")
             continue
@@ -101,6 +104,7 @@ def run(source_path: Path, decisions_path: Path) -> None:
         new_source = _apply_fix(source_code, fix_instruction, client)
         source_path.write_text(new_source, encoding="utf-8")
         decision["status"] = "done"
+        decision["last_updated"] = now_utc()
         _save_decisions(decisions, decisions_path)
         applied += 1
         print(f"Rewriter: applied fix {applied}/{total}: \"{issue['fingerprint']}\"")

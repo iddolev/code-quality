@@ -12,6 +12,8 @@ from typing import Any
 
 import anthropic
 
+from common import now_utc
+
 _PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 _MODEL = "claude-opus-4-6"
 
@@ -75,6 +77,7 @@ def _consult_human(
         "decision_by": "human",
         "senior_se_reasoning": senior_se_reasoning,
         "status": "pending",
+        "last_updated": now_utc(),
     }
 
     if choice == "1":
@@ -118,16 +121,26 @@ def run(issues_path: Path) -> Path:
         issues_path.name.replace(".issues.json", ".decisions.json")
     )
 
+    existing_decisions: list[dict[str, Any]] = (
+        json.loads(decisions_path.read_text(encoding="utf-8")) if decisions_path.exists() else []
+    )
+    decided_ids = {d["id"] for d in existing_decisions}
+    new_issues = [issue for issue in issues if issue["id"] not in decided_ids]
+
+    if not new_issues:
+        print("Senior SE: all issues already have decisions.")
+        return decisions_path
+
     client = anthropic.Anthropic()
-    print(f"Senior SE: triaging {len(issues)} issue(s) ...")
-    triage_results = _triage_issues(issues, client)
+    print(f"Senior SE: triaging {len(new_issues)} new issue(s) ...")
+    triage_results = _triage_issues(new_issues, client)
     triage_by_id = {t["id"]: t for t in triage_results}
     print("Senior SE: triage complete.")
 
-    decisions: list[dict[str, Any]] = []
-    total = len(issues)
+    decisions = list(existing_decisions)
+    total = len(new_issues)
 
-    for i, issue in enumerate(issues, start=1):
+    for i, issue in enumerate(new_issues, start=1):
         triage = triage_by_id[issue["id"]]
         triage_label = triage["triage"]
         reasoning = triage["senior_se_reasoning"]
@@ -139,6 +152,7 @@ def run(issues_path: Path) -> Path:
                 "decision_by": "senior_se",
                 "senior_se_reasoning": reasoning,
                 "status": "pending",
+                "last_updated": now_utc(),
             }
         else:
             record = _consult_human(issue, reasoning, i, total, client)
