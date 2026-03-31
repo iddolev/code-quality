@@ -30,7 +30,10 @@ def run(source_path: Path) -> Path:
         system=system_prompt,
         messages=[{"role": "user", "content": source_code}],
     )
-    raw_issues = json.loads(response.content[0].text)
+    text = response.content[0].text.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1].rsplit("```", 1)[0]
+    raw_issues = json.loads(text)
     issues = [{"id": i + 1, **issue} for i, issue in enumerate(raw_issues)]
 
     issues_path = source_path.with_suffix("").with_suffix(".issues.json")

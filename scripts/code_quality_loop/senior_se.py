@@ -37,7 +37,10 @@ def _triage_issues(
         system=system_prompt,
         messages=[{"role": "user", "content": json.dumps(issues, indent=2)}],
     )
-    return json.loads(response.content[0].text)
+    text = response.content[0].text.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1].rsplit("```", 1)[0]
+    return json.loads(text)
 
 
 def _consult_human(
@@ -100,7 +103,10 @@ def _apply_custom_instruction(
         system=system_prompt,
         messages=[{"role": "user", "content": json.dumps(payload, indent=2)}],
     )
-    custom_fields = json.loads(response.content[0].text)
+    text = response.content[0].text.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1].rsplit("```", 1)[0]
+    custom_fields = json.loads(text)
     custom_fields.pop("action", None)
     return {**base, "action": "custom", **custom_fields}
 

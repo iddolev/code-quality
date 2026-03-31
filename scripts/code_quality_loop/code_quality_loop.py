@@ -8,6 +8,9 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import critic
 import senior_se
 import rewriter
