@@ -23,6 +23,7 @@ def run(source_path: Path) -> Path:
     source_code = source_path.read_text(encoding="utf-8")
     system_prompt = _load_prompt("critic_prompt.md")
 
+    print(f"Code critic: reviewing {source_path.name} ...")
     client = anthropic.Anthropic()
     response = client.messages.create(
         model=_MODEL,
@@ -35,6 +36,7 @@ def run(source_path: Path) -> Path:
         text = text.split("\n", 1)[1].rsplit("```", 1)[0]
     raw_issues = json.loads(text)
     issues = [{"id": i + 1, **issue} for i, issue in enumerate(raw_issues)]
+    print(f"Code critic: found {len(issues)} issue(s).")
 
     issues_path = source_path.with_suffix("").with_suffix(".issues.json")
     issues_path.write_text(json.dumps(issues, indent=2), encoding="utf-8")

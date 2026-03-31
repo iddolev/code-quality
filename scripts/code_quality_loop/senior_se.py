@@ -119,8 +119,10 @@ def run(issues_path: Path) -> Path:
     )
 
     client = anthropic.Anthropic()
+    print(f"Senior SE: triaging {len(issues)} issue(s) ...")
     triage_results = _triage_issues(issues, client)
     triage_by_id = {t["id"]: t for t in triage_results}
+    print("Senior SE: triage complete.")
 
     decisions: list[dict[str, Any]] = []
     total = len(issues)

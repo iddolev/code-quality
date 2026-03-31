@@ -86,19 +86,21 @@ def run(source_path: Path, decisions_path: Path) -> None:
     for decision in actionable:
         issue = issues_by_id[decision["id"]]
         source_code = source_path.read_text(encoding="utf-8")
+        print(f"Rewriter: checking relevance of \"{issue['fingerprint']}\" ...")
         verdict, explanation = _check_relevance(source_code, issue, client)
 
         if verdict in ("impossible", "no_longer_relevant"):
             decision["status"] = verdict
             decision["explanation"] = explanation
             _save_decisions(decisions, decisions_path)
-            print(f"Skipped ({verdict}): {issue['fingerprint']}")
+            print(f"Rewriter: skipped ({verdict}): \"{issue['fingerprint']}\"")
             continue
 
         fix_instruction = _effective_fix(issue, decision)
+        print(f"Rewriter: applying fix for \"{issue['fingerprint']}\" ...")
         new_source = _apply_fix(source_code, fix_instruction, client)
         source_path.write_text(new_source, encoding="utf-8")
         decision["status"] = "done"
         _save_decisions(decisions, decisions_path)
         applied += 1
-        print(f"Applied fix {applied}/{total}: {issue['fingerprint']}")
+        print(f"Rewriter: applied fix {applied}/{total}: \"{issue['fingerprint']}\"")
