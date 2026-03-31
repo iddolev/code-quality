@@ -1,5 +1,14 @@
 # To do list
 
+# Do similar to apf: 
+
+Can install and re-install it in a similar way under code-quality/
+
+## Sed also
+
+- https://claude.ai/share/aa69bcc9-c723-47e9-aa1b-571de1c5cc04
+- Coding guidelines: https://docs.google.com/document/d/1295NjaG9B9LTuvNagDJAoOX6JijyLAgDsRqiR5H62LY/edit?tab=t.0
+
 ## More rules
 
 All member variables of a class should be private. 
