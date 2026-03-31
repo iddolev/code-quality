@@ -51,10 +51,12 @@ def _consult_human(
     issue_index: int,
     total: int,
     client: anthropic.Anthropic,
+    *,
+    header_note: str = "⚠ Needs your input",
 ) -> dict[str, Any]:
     """Display the issue to the human and return a decision record (id + decision fields only)."""
     print(f"\n{'─' * 53}")
-    print(f"Issue {issue_index}/{total}  [{issue['severity']}]  ⚠ Needs your input")
+    print(f"Issue {issue_index}/{total}  [{issue['severity']}]  {header_note}")
     print(f"Location:    {issue['location']}")
     print(f"Fingerprint: {issue['fingerprint']}")
     print(f"\nDescription: {issue['description']}")
@@ -124,40 +126,65 @@ def run(issues_path: Path) -> Path:
     existing_decisions: list[dict[str, Any]] = (
         json.loads(decisions_path.read_text(encoding="utf-8")) if decisions_path.exists() else []
     )
+    issues_by_id = {issue["id"]: issue for issue in issues}
     decided_ids = {d["id"] for d in existing_decisions}
+    pending = [d for d in existing_decisions if d["status"] == "pending"]
     new_issues = [issue for issue in issues if issue["id"] not in decided_ids]
 
-    if not new_issues:
+    if not pending and not new_issues:
         print("Senior SE: all issues already have decisions.")
         return decisions_path
 
     client = anthropic.Anthropic()
-    print(f"Senior SE: triaging {len(new_issues)} new issue(s) ...")
-    triage_results = _triage_issues(new_issues, client)
-    triage_by_id = {t["id"]: t for t in triage_results}
-    print("Senior SE: triage complete.")
-
     decisions = list(existing_decisions)
-    total = len(new_issues)
+    total = len(pending) + len(new_issues)
+    counter = 0
 
-    for i, issue in enumerate(new_issues, start=1):
-        triage = triage_by_id[issue["id"]]
-        triage_label = triage["triage"]
-        reasoning = triage["senior_se_reasoning"]
+    # Re-present previously unresolved (pending) issues
+    if pending:
+        print(f"Senior SE: re-presenting {len(pending)} unresolved issue(s) from previous run ...")
+        for decision in pending:
+            issue = issues_by_id[decision["id"]]
+            counter += 1
+            header = (
+                "⏭ Previously skipped — revisiting"
+                if decision["action"] == "skip_for_now"
+                else "⏸ Unresolved from previous run"
+            )
+            new_record = _consult_human(
+                issue, decision["senior_se_reasoning"], counter, total, client,
+                header_note=header,
+            )
+            idx = next(i for i, d in enumerate(decisions) if d["id"] == decision["id"])
+            decisions[idx] = new_record
+            decisions_path.write_text(json.dumps(decisions, indent=2), encoding="utf-8")
 
-        if triage_label in _TRIAGE_TO_ACTION:
-            record: dict[str, Any] = {
-                "id": issue["id"],
-                "action": _TRIAGE_TO_ACTION[triage_label],
-                "decision_by": "senior_se",
-                "senior_se_reasoning": reasoning,
-                "status": "pending",
-                "last_updated": now_utc(),
-            }
-        else:
-            record = _consult_human(issue, reasoning, i, total, client)
+    # Triage and decide on new issues
+    if new_issues:
+        print(f"Senior SE: triaging {len(new_issues)} new issue(s) ...")
+        triage_results = _triage_issues(new_issues, client)
+        triage_by_id = {t["id"]: t for t in triage_results}
+        print("Senior SE: triage complete.")
 
-        decisions.append(record)
-        decisions_path.write_text(json.dumps(decisions, indent=2), encoding="utf-8")
+        for issue in new_issues:
+            triage = triage_by_id[issue["id"]]
+            triage_label = triage["triage"]
+            reasoning = triage["senior_se_reasoning"]
+            counter += 1
+
+            if triage_label in _TRIAGE_TO_ACTION:
+                record: dict[str, Any] = {
+                    "id": issue["id"],
+                    "action": _TRIAGE_TO_ACTION[triage_label],
+                    "decision_by": "senior_se",
+                    "senior_se_reasoning": reasoning,
+                    "status": "pending",
+                    "last_updated": now_utc(),
+                }
+            else:
+                record = _consult_human(issue, reasoning, counter, total, client)
+
+            decisions.append(record)
+            decisions_path.write_text(json.dumps(decisions, indent=2), encoding="utf-8")
 
     return decisions_path
