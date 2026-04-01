@@ -34,17 +34,14 @@ class NextRunner:
         self.client = anthropic.Anthropic()
 
     def run(self) -> None:
-        actionable = [
-            d for d in self.decisions
-            if d["action"] in ("implement", "custom") and d["status"] == "pending"
-        ]
+        actionable = [d for d in self.decisions
+                      if d["action"] in ("implement", "custom") and d["status"] == "pending"]
         for decision in actionable:
             if self._process_decision(decision):
                 return
-        skip_count = sum(
-            1 for d in self.decisions
-            if d["action"] in ("skip_for_now", "skipped_re_ask") and d["status"] == "pending"
-        )
+        skip_count = sum(1 for d in self.decisions
+                         if d["action"] in ("skip_for_now", "skipped_re_ask")
+                         and d["status"] == "pending")
         print(f"DONE {skip_count}")
 
     def _process_decision(self, decision: dict[str, Any]) -> bool:
@@ -109,11 +106,9 @@ class NextRunner:
         })
 
     @staticmethod
-    def _check_relevance(
-        source_code: str,
-        issue: dict[str, Any],
-        client: anthropic.Anthropic,
-    ) -> tuple[str, str]:
+    def _check_relevance(source_code: str,
+                         issue: dict[str, Any],
+                         client: anthropic.Anthropic) -> tuple[str, str]:
         """Return (verdict, extra). verdict is one of:
           applicable         — issue still exists, fix can be applied as-is
           needs_update       — issue still exists but description/location have shifted;
@@ -123,12 +118,10 @@ class NextRunner:
         """
         system_prompt = load_prompt("relevance_check_prompt.md")
         user_content = f"{source_code}\n\n---ISSUE---\n{json.dumps(issue, indent=2)}"
-        response = client.messages.create(
-            model=_MODEL,
-            max_tokens=512,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_content}],
-        )
+        response = client.messages.create(model=_MODEL,
+                                          max_tokens=512,
+                                          system=system_prompt,
+                                          messages=[{"role": "user", "content": user_content}])
         raw = response.content[0].text.strip()
         first_line = raw.splitlines()[0].strip().lower()
         extra = "\n".join(raw.splitlines()[1:]).strip()

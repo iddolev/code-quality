@@ -20,11 +20,12 @@ error handling behavior, or API contracts - do so very carefully.
 ## Table of Contents
 
 1. [Line Splits](#line-splits)
-2. [Break Long/Complex Sections Into Smaller Blocks](#break-long-complex-sections-into-smaller-blocks)
-3. [Avoid Deep Nesting](#avoid-deep-nesting)
-4. [Keep `try` and `except` Close Together](#keep-try-and-except-close-together)
-5. [Use Class Members Instead of Passing Values Around](#use-class-members-instead-of-passing-values-around)
-6. [Class Helpers Should Use In-Class `@staticmethod` Instead of Function](#class-helpers-should-use-in-class-staticmethod-instead-of-function)
+2. [Use Orphan Parentheses Only When Necessary](#use-orphan-parentheses-only-when-necessary)
+3. [Break Long/Complex Sections Into Smaller Blocks](#break-long-complex-sections-into-smaller-blocks)
+4. [Avoid Deep Nesting](#avoid-deep-nesting)
+5. [Keep `try` and `except` Close Together](#keep-try-and-except-close-together)
+6. [Use Class Members Instead of Passing Values Around](#use-class-members-instead-of-passing-values-around)
+7. [Class Helpers Should Use In-Class `@staticmethod` Instead of Function](#class-helpers-should-use-in-class-staticmethod-instead-of-function)
 
 ---
 
@@ -46,19 +47,7 @@ def calculate(input_location: ResourceLocation,
               parallel_run: bool) -> tuple[int, str]:
 ```
 
-**NOTE:** Don't create orphan parentheses, 
-i.e. the above example should NOT look like this ugly snippet:
-
-```python
-def calculate(
-    input_location: ResourceLocation,
-    limit_number: int,
-    relevant_sections: List[str],
-    parallel_run: bool
-) -> tuple[int, str]:
-```
-
-**Also note:** Do NOT split function parameters when it's unnecessary. For example, in the following snippet:
+**Note:** Do NOT split function parameters when it's unnecessary. For example, in the following snippet:
 
 ```python
 def apply_modification(text: str, 
@@ -94,6 +83,43 @@ write:
 **Notice:** Automatic reformatting using PyCharm (Ctrl+Alt+L) sometimes splits lines in bad places, 
 e.g. splits after an opening "[". So if you use PyCharm's reformatting, 
 please go over the code and make sure lines are split in reasonable places.
+
+<a id="use-orphan-parentheses-only-when-necessary"/>
+
+## Use Orphan Parentheses Only When Necessary
+
+Don't create orphan parentheses for short operators.
+The example from the previous chapter should NOT look like this ugly snippet:
+
+```python
+def calculate(
+    input_location: ResourceLocation,
+    limit_number: int,
+    relevant_sections: List[str],
+    parallel_run: bool
+) -> tuple[int, str]:
+```
+
+However, when the operator itself is long (> 30 characters), 
+making everything appear too much to the right, you can split.
+For example, instead of this:
+
+```python
+apply_a_very_long_string_just_to_make_the_point(input_location: ResourceLocation,
+                                                limit_number: int,
+                                                relevant_sections: List[str],
+                                                parallel_run: bool)
+```
+
+use this:
+
+```python
+def apply_a_very_long_string_just_to_make_the_point(
+        input_location: ResourceLocation,
+        limit_number: int,
+        relevant_sections: List[str],
+        parallel_run: bool)
+```
 
 <a id="break-long-complex-sections-into-smaller-blocks"/>
 
