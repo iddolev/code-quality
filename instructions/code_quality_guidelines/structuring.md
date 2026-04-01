@@ -12,7 +12,7 @@ All guidelines are based on real cases observed in code that was
 written by junior software engineers and could be improved.
 Although examples are shown in Python, the principles apply to any programming language.
 
-## Critutal Instructions for the LLM:
+## Critical Instructions for the LLM:
 
 CRITICAL: The guidelines instruct about cosmetic/structural changes only! 
 You must preserve the exact semantic behavior of the original code. 
@@ -26,11 +26,6 @@ When in doubt, leave the code unchanged, and ask the user.
    1. [Naming Conventions](#naming-conventions)
    2. [Avoid Magic Values](#avoid-magic-values)
    3. [Comments](#comments)
-2. [Visual Flow](#visual-flow)
-   1. [Line Splits](#line-splits)
-   2. [Break Long/Complex Sections Into Smaller Blocks](#break-long-complex-sections-into-smaller-blocks)
-   3. [Avoid Deep Nesting](#avoid-deep-nesting)
-   4. [Keep `try` and `except` Close Together](#keep-try-and-except-close-together)
 3. [Order](#order)
    1. [Put the smaller `if` case first](#put-the-smaller-if-case-first)
    2. [Order `if/elif` branches by likelihood](#order-ifelif-branches-by-likelihood)
@@ -195,193 +190,8 @@ def calculate_score(attempts: int, max_attempts: int) -> float:
     return max(0.0, 1 - attempts / max_attempts)
 ````
 
-<a id="visual-flow"/>
 
-## 2. Visual Flow
 
-<a id="line-splits"/>
-
-### 2.1. Line Splits
-
-Long lines should be split rather than allowing them to overflow beyond 100 characters. They should be split in logical places.
-
-In particular, in the definition of a function and the call to a function that has many parameters,
-put each parameter on a separate line. E.g.:
-
-```python
-def __init__(self,
-             input_location: ResourceLocation,
-             limit_number: int,
-             relevant_sections: List[str],
-             parallel_run: bool):
-```
-
-Another example:
-When you have two "for" sections in a comprehension, put each on a separate line. E.g., instead of:
-
-```python
-[tuple(tokens[i:i + k]) for k in self.n_grams for i in range(1 + len(tokens) - k)]
-```
-
-write:
-
-```python
-[tuple(tokens[i:i + k])
- for k in self.n_grams
- for i in range(1 + len(tokens) - k)]
-```
-
-**Notice:** Automatic reformatting using PyCharm (Ctrl+Alt+L) sometimes splits lines in bad places, e.g. splits after an opening "[". So if you use it, please go over the code and make sure lines are split in appropriate places.
-
-<a id="break-long-complex-sections-into-smaller-blocks"/>
-
-### 2.2. Break Long/Complex Sections Into Smaller Blocks
-
-Break large blocks by refactoring into smaller chunks:
-
-1. A file, and a class, should be no longer than about 200 lines.
-2. Any code block, e.g. a function, the body of a for/while loop, etc., should not be longer than 12-15 lines, to ease readability.
-
-<a id="avoid-deep-nesting"/>
-
-### 2.3. Avoid Deep Nesting
-
-Avoid nesting with more than 2 or 3 levels, as it becomes unreadable, and difficult to maintain.
-
-For example, consider this code:
-
-```python
-def get_cutoff():
-    try:
-        with open(EXPLANATIONS_FILE) as f:
-            for line in f:
-                m = re.match(r"last_updated:\s*(.*)", line)
-                if m:
-                    return parse_timestamp(m.group(1))
-    except FileNotFoundError:
-        pass
-    return None
-```
-
-There are 5 levels of nesting here, and it's visually disturbing.
-A better way of writing this is:
-
-```python
-def _get_cutoff(f: File) -> Optional[datetime]:
-    for line in f:
-        m = re.match(r"last_updated:\s*(.*)", line)
-        if m:
-            return parse_timestamp(m.group(1))
-    return None
-
-def get_cutoff(filepath: str) -> Optional[datetime]:
-    try:
-        with open(filepath) as f:
-            return _get_cutoff(f)
-    except FileNotFoundError:
-        return None
-```
-
-Also often: nested for-loops with 2 levels would be more readable by extracting the body of the outer loop to a separate function (with its own for-loop).
-
-For example, instead of:
-
-```python
-def settle_accounts(ledgers):
-    for ledger in ledgers:
-        balance = 0
-        for txn in ledger.transactions:
-            if txn.is_void:
-                continue
-            balance += txn.amount
-            if balance < 0:
-                txn.flag_overdraft()
-                balance += txn.penalty
-        ledger.final_balance = balance
-```
-
-use:
-
-```python
-def _settle_ledger(ledger):
-    balance = 0
-    for txn in ledger.transactions:
-        if txn.is_void:
-            continue
-        balance += txn.amount
-        if balance < 0:
-            txn.flag_overdraft()
-            balance += txn.penalty
-    ledger.final_balance = balance
-
-def settle_accounts(ledgers):
-    for ledger in ledgers:
-        _settle_ledger(ledger)
-```
-
-<a id="keep-try-and-except-close-together"/>
-
-### 2.4. Keep `try` and `except` Close Together
-
-The `except` clause handles an error that originates from a specific operation — typically the first line after `try:`. 
-When a long block of code sits between `try:` and `except`, the reader loses sight of which operation 
-the exception handler belongs to. It also risks catching exceptions that were thrown by unrelated code inside the block.
-
-**Rule:** Keep the `try` block as short as possible. 
-It should contain only the operation that can raise the exception (and any code that directly depends on it succeeding).
-Move everything else outside the `try/except`.
-
-For example, instead of:
-
-```python
-try:
-    content = path.read_text(encoding="utf-8")
-    lines = content.splitlines(keepends=True)
-    for i, line in enumerate(lines):
-        if re.match(r"^version\s*:", line):
-            new_line = f"version: {new_version}\n"
-            if lines[i] == new_line:
-                return
-            lines[i] = new_line
-            break
-    else:
-        return
-    if dry_run:
-        print(f"  [dry-run] Would update version in {INFO_FILE}")
-    else:
-        path.write_text("".join(lines), encoding="utf-8")
-except OSError as e:
-    warn(f"Could not update version in {INFO_FILE}: {e}")
-```
-
-Here, the `OSError` concern belongs with the file I/O, but it sits 15 lines away from `read_text`. The reader has to scan the entire block to understand what the `except` is guarding. Prefer:
-
-```python
-try:
-    content = path.read_text(encoding="utf-8")
-except OSError as e:
-    warn(f"Could not read {INFO_FILE}: {e}")
-    return
-lines = content.splitlines(keepends=True)
-for i, line in enumerate(lines):
-    if re.match(r"^version\s*:", line):
-        new_line = f"version: {new_version}\n"
-        if lines[i] == new_line:
-            return
-        lines[i] = new_line
-        break
-else:
-    return
-if dry_run:
-    print(f"  [dry-run] Would update version in {INFO_FILE}")
-else:
-    try:
-        path.write_text("".join(lines), encoding="utf-8")
-    except OSError as e:
-        warn(f"Could not write {INFO_FILE}: {e}")
-```
-
-Now each `except` sits right next to the operation it guards, making the error-handling intent immediately clear.
 
 <a id="order"/>
 
@@ -421,7 +231,7 @@ def func(x):
 
 This has less indentation, and is easier to debug.
 
-<a id="order-ifelif-branches-by-likelihood"/>
+<a id="order-if-elif-branches-by-likelihood"/>
 
 ### 3.2. Order `if/elif` branches by likelihood
 
@@ -936,39 +746,6 @@ use:
 x.set_dc(value)
 ```
 
-<a id="use-class-members-instead-of-passing-values-around"/>
-
-### 9.3. Use class members instead of passing values around
-
-For example, suppose you are processing a list of log entries and need to track whether you are currently inside an error block (which spans multiple entries). You put the per-entry logic in a separate function according to the principle "[Break Long/Complex Sections Into Smaller Blocks](#break-long-complex-sections-into-smaller-blocks)".
-But the `inside_error_block` state carries across iterations. So instead of passing it back and forth:
-
-```python
-inside_error_block = False
-for entry in log_entries:
-    inside_error_block = process_entry(entry, inside_error_block)
-
-def process_entry(entry: LogEntry, inside_error_block: bool) -> bool:
-    ...   # code that may change inside_error_block
-    return inside_error_block
-```
-
-Consider encapsulating the state in a class:
-
-```python
-class LogProcessor:
-    def __init__(self):
-       self.inside_error_block = False
-
-    def run(self, log_entries: List[LogEntry]):
-        for entry in log_entries:
-            self.process_entry(entry)
-
-    def process_entry(self, entry: LogEntry) -> None:
-        ...   # code that may change self.inside_error_block
-```
-
-**Caveat:** Use this pattern when the class represents a meaningful domain concept, not merely to avoid passing arguments. Wrapping unrelated variables in a class just to reduce function parameters trades explicit data flow for hidden mutable state, which can make the code harder to reason about and debug.
 
 <a id="single-responsibility-principle"/>
 
