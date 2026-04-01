@@ -19,19 +19,19 @@ or error handling behavior - do so very carefully.
 
 ## Table of Contents
 
-1. [Line Splits](#line-splits)
-2. [Use Orphan Parentheses Only When Necessary](#use-orphan-parentheses-only-when-necessary)
-3. [Break Long/Complex Sections Into Smaller Blocks](#break-long-complex-sections-into-smaller-blocks)
-4. [Avoid Deep Nesting](#avoid-deep-nesting)
-5. [Keep `try` and `except` Close Together](#keep-try-and-except-close-together)
-6. [Use Class Members Instead of Passing Values Around](#use-class-members-instead-of-passing-values-around)
-7. [Class Helpers Should Use In-Class `@staticmethod` Instead of Function](#class-helpers-should-use-in-class-staticmethod-instead-of-function)
+[1. Line Splits](#1-line-splits)
+[2. Use Orphan Parentheses Only When Necessary](#2-use-orphan-parentheses-only-when-necessary)
+[3. Break Long/Complex Sections Into Smaller Blocks](#3-break-longcomplex-sections-into-smaller-blocks)
+[4. Avoid Deep Nesting](#4-avoid-deep-nesting)
+[5. Keep `try` and `except` Close Together](#5-keep-try-and-except-close-together)
+[6. Use Class Members Instead of Passing Values Around](#6-use-class-members-instead-of-passing-values-around)
+[7. Class Helpers Should Use In-Class `@staticmethod` Instead of Function](#7-class-helpers-should-use-in-class-staticmethod-instead-of-function)
 
 ---
 
-<a id="line-splits"/>
+<a id="1-line-splits"/>
 
-## Line Splits
+## 1. Line Splits
 
 Long lines should be split rather than allowing them to overflow beyond 100 characters. They should be split in logical places.
 
@@ -84,9 +84,9 @@ write:
 e.g. splits after an opening "[". So if you use PyCharm's reformatting, 
 please go over the code and make sure lines are split in reasonable places.
 
-<a id="use-orphan-parentheses-only-when-necessary"/>
+<a id="2-use-orphan-parentheses-only-when-necessary"/>
 
-## Use Orphan Parentheses Only When Necessary
+## 2. Use Orphan Parentheses Only When Necessary
 
 Don't create orphan parentheses for short operators.
 The example from the previous chapter should NOT look like this ugly snippet:
@@ -121,9 +121,9 @@ def apply_a_very_long_string_just_to_make_the_point(
         parallel_run: bool)
 ```
 
-<a id="break-long-complex-sections-into-smaller-blocks"/>
+<a id="3-break-longcomplex-sections-into-smaller-blocks"/>
 
-## Break Long/Complex Sections Into Smaller Blocks
+## 3. Break Long/Complex Sections Into Smaller Blocks
 
 Break large blocks by refactoring into smaller chunks:
 
@@ -135,9 +135,9 @@ In fact, if the code block exceeds 10 lines, it should often be re-written
 to include the high-level algorithm of the block, 
 which calls smaller helper functions, to make the code more readable.
 
-<a id="avoid-deep-nesting"/>
+<a id="4-avoid-deep-nesting"/>
 
-## Avoid Deep Nesting
+## 4. Avoid Deep Nesting
 
 Nesting with more than 5 levels should be refactored because 
 the code becomes difficult to read and maintain.
@@ -224,9 +224,9 @@ def settle_accounts(ledgers):
         _settle_ledger(ledger)
 ```
 
-<a id="keep-try-and-except-close-together"/>
+<a id="5-keep-try-and-except-close-together"/>
 
-## Keep `try` and `except` Close Together
+## 5. Keep `try` and `except` Close Together
 
 The `except` clause handles an error that originates from a specific operation — typically the first line after `try:`. 
 When a long block of code sits between `try:` and `except`, the reader loses sight of which operation 
@@ -288,9 +288,9 @@ else:
 
 Now each `except` sits right next to the operation it guards, making the error-handling intent immediately clear.
 
-<a id="use-class-members-instead-of-passing-values-around"/>
+<a id="6-use-class-members-instead-of-passing-values-around"/>
 
-## Use Class Members Instead of Passing Values Around
+## 6. Use Class Members Instead of Passing Values Around
 
 This principles applies to a module having several functions that pass many values 
 (function parameters) between themselves.
@@ -303,7 +303,7 @@ For example, suppose you are processing a list of log entries
 and need to track whether you are currently inside an error block 
 (which spans multiple entries). 
 You put the per-entry logic in a separate function according to the principle above:
-"[Break Long/Complex Sections Into Smaller Blocks](#break-long-complex-sections-into-smaller-blocks)".
+"[3. Break Long/Complex Sections Into Smaller Blocks](#3-break-longcomplex-sections-into-smaller-blocks)".
 But the `inside_error_block` state carries across iterations. So instead of passing it back and forth:
 
 ```python
@@ -369,7 +369,7 @@ def run_next(source_path: Path) -> None:
 ```
 
 This body is too long (> 15 lines). But if you naively apply the rule
-"[Break Long/Complex Sections Into Smaller Blocks](#break-long-complex-sections-into-smaller-blocks)", 
+"[3. Break Long/Complex Sections Into Smaller Blocks](#3-break-longcomplex-sections-into-smaller-blocks)", 
 you face a problem: `issues`, `decisions`, `issues_by_id`, `source_code`, `ip`, `dp`, and `client` 
 are all needed across steps. A naive helper function that loads them must return 4+ values:
 
@@ -441,9 +441,9 @@ Wrapping unrelated variables in a class just to reduce function parameters
 may trade explicit data flow for hidden mutable state, 
 which can make the code harder to reason about and debug.
 
-<a id="class-helpers-should-use-in-class-staticmethod-instead-of-function"/>
+<a id="7-class-helpers-should-use-in-class-staticmethod-instead-of-function"/>
 
-## Class Helpers Should Use In-Class `@staticmethod` Instead of Function
+## 7. Class Helpers Should Use In-Class `@staticmethod` Instead of Function
 
 When a helper function is logically part of a class's algorithm — 
 i.e. it is only called by methods of that class — 
@@ -455,7 +455,7 @@ that these functions belong to the class's operation.
 
 **Rule:** If a helper function is only ever called from within one class, define it as a `@staticmethod` on that class.
 
-For example, after applying the ["Use Class Members Instead of Passing Values Around"](#use-class-members-instead-of-passing-values-around)
+For example, after applying the ["6. Use Class Members Instead of Passing Values Around"](#6-use-class-members-instead-of-passing-values-around)
 refactoring, an LLM might produce:
 
 ```python
