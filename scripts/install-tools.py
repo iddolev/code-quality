@@ -27,6 +27,7 @@ def install(tool: str) -> None:
         stderr = result.stderr.strip() if result else "command failed to run"
         print(f"  FAILED to install {tool}: {stderr}")
         return
+
     version = get_version(tool)
     if version:
         print(f"  Installed: {version}")

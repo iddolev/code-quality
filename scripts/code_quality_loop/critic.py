@@ -34,10 +34,12 @@ class CodeCritic:
     def run(self) -> None:
         known_unresolved = self._known_unresolved_issues()
         user_message = self._build_user_message(known_unresolved)
+
         print(f"Code critic: reviewing {self.source_path.name} ...")
         new_issues = self._review(user_message)
         print(f"Code critic: found {len(new_issues)} new issue(s), "
               f"{len(known_unresolved)} already known.")
+
         self.ip.write_text(
             json.dumps(self.existing_issues + new_issues, indent=2), encoding="utf-8"
         )
