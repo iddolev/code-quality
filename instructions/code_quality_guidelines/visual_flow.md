@@ -235,6 +235,8 @@ This principles applies to a module having several functions that pass many valu
 Sometimes such a case would benefit from encapsulating the functions as methods of a class 
 which has private member variable that make it unnecessary to pass a lot of values around.
 
+### Example 1: [TBD find good name]
+
 For example, suppose you are processing a list of log entries 
 and need to track whether you are currently inside an error block 
 (which spans multiple entries). 
@@ -270,6 +272,8 @@ class LogProcessor:
 Although in this example it may not be so obvious which approach is more readable,
 we can say that the more you have values that are being passed around, 
 the stronger the motivation to refactor the code to avoid a lot of passing around.
+
+### Example 2: [TBD find good name]
 
 As another example, consider a function that loads data from several sources, 
 then processes it in multiple steps — each step needing access to many of the loaded values:
@@ -374,3 +378,63 @@ not merely to avoid passing arguments. It's a judgement call:
 Wrapping unrelated variables in a class just to reduce function parameters 
 may trade explicit data flow for hidden mutable state, 
 which can make the code harder to reason about and debug.
+
+## Class Helpers Should Use In-Class `@staticmethod` Instead of Function
+
+When a helper function is logically part of a class's algorithm — 
+i.e. it is only called by methods of that class — 
+it should be defined as a `@staticmethod` inside the class, even if it does not reference `self`.
+
+Placing such helpers as module-level functions before the class definition breaks encapsulation: 
+it scatters the class's logic across the file and obscures the fact 
+that these functions belong to the class's operation.
+
+**Rule:** If a helper function is only ever called from within one class, define it as a `@staticmethod` on that class.
+
+For example, after applying the ["Use Class Members Instead of Passing Values Around"]([TBD add the link]) 
+refactoring, an LLM might produce:
+
+```python
+def _check_relevance(source_code, issue, client):
+    ...   # only called from NextRunner methods
+
+def _parse_needs_update(extra):
+    ...   # only called from NextRunner methods
+
+class NextRunner:
+    def _process_decision(self, decision):
+        verdict, extra = _check_relevance(self.source_code, issue, self.client)
+        if verdict == "needs_update":
+            return self._handle_needs_update(issue, extra)
+        ...
+
+    def _handle_needs_update(self, issue, extra):
+        updates = _parse_needs_update(extra)
+        ...
+```
+
+`_check_relevance` and `_parse_needs_update` are logically part of `NextRunner`'s algorithm, but because they don't reference `self`, the LLM placed them outside the class. Prefer:
+
+```python
+class NextRunner:
+    def _process_decision(self, decision):
+        verdict, extra = self._check_relevance(self.source_code, issue, self.client)
+        if verdict == "needs_update":
+            return self._handle_needs_update(issue, extra)
+        ...
+
+    def _handle_needs_update(self, issue, extra):
+        updates = self._parse_needs_update(extra)
+        ...
+
+    @staticmethod
+    def _check_relevance(source_code, issue, client):
+        ...
+
+    @staticmethod
+    def _parse_needs_update(extra):
+        ...
+```
+
+Now the class fully encapsulates its own algorithm, and the reader immediately understands 
+that these helpers belong to `NextRunner`'s logic.

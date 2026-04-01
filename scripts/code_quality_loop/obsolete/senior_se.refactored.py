@@ -94,7 +94,8 @@ def _age_skip_decisions(decisions: list[dict[str, Any]], dp: Path) -> int:
 
 
 def _make_decision_record(issue: dict[str, Any], triage: dict[str, Any]) -> dict[str, Any]:
-    action = _TRIAGE_TO_ACTION.get(triage["triage"], "needs_human_approval")
+    triage_label = triage["triage"]
+    action = _TRIAGE_TO_ACTION.get(triage_label, "needs_human_approval")
     return {
         "id": issue["id"],
         "action": action,
@@ -190,90 +191,128 @@ def _parse_needs_update(extra: str) -> dict[str, str]:
     return result
 
 
-class NextRunner:
-    def __init__(self, source_path: Path):
-        self.source_path = source_path
-        self.ip = issues_path(source_path)
-        self.dp = decisions_path(source_path)
-        self.issues: list[dict[str, Any]] = json.loads(self.ip.read_text(encoding="utf-8"))
-        self.decisions: list[dict[str, Any]] = json.loads(self.dp.read_text(encoding="utf-8"))
-        self.issues_by_id = {issue["id"]: issue for issue in self.issues}
-        self.source_code = source_path.read_text(encoding="utf-8")
-        self.client = anthropic.Anthropic()
+def _save_updated_issue(
+    issue: dict[str, Any],
+    history_entry: dict[str, Any],
+    updates: dict[str, str],
+    source_path: Path,
+    ip: Path,
+    issues: list[dict[str, Any]],
+) -> None:
+    issue.setdefault("history", []).append(history_entry)
+    issue.update(updates)
+    issue["last_updated"] = now_utc()
+    ip.write_text(json.dumps(issues, indent=2), encoding="utf-8")
+    log_append(source_path, {
+        "event": "issue_updated",
+        "fingerprint": issue["fingerprint"],
+        "old": history_entry,
+        "new": updates,
+    })
 
-    def run(self) -> None:
-        actionable = [
-            d for d in self.decisions
-            if d["action"] in ("implement", "custom") and d["status"] == "pending"
-        ]
-        for decision in actionable:
-            if self._process_decision(decision):
-                return
-        skip_count = sum(
-            1 for d in self.decisions
-            if d["action"] in ("skip_for_now", "skipped_re_ask") and d["status"] == "pending"
-        )
-        print(f"DONE {skip_count}")
 
-    def _process_decision(self, decision: dict[str, Any]) -> bool:
-        """Check relevance and emit NEXT if applicable. Returns True if NEXT was emitted."""
-        issue = self.issues_by_id[decision["id"]]
-        log_append(self.source_path, {"event": "relevance_check", "fingerprint": issue["fingerprint"]})
-        verdict, extra = _check_relevance(self.source_code, issue, self.client)
-        if verdict == "applicable":
-            print(f"NEXT {json.dumps(issue)}")
-            return True
-        if verdict == "needs_update":
-            return self._handle_needs_update(issue, extra)
-        if verdict not in ("impossible", "no_longer_relevant"):
-            # Unexpected verdict from LLM — treat as applicable
-            print(f"NEXT {json.dumps(issue)}")
-            return True
-        self._mark_skipped(decision, issue, verdict)
-        return False
+def _apply_needs_update(
+    issue: dict[str, Any],
+    extra: str,
+    source_path: Path,
+    ip: Path,
+    issues: list[dict[str, Any]],
+) -> None:
+    """Update issue in place if LLM provided valid description/location updates."""
+    updates = _parse_needs_update(extra)
+    if not updates.get("description") or not updates.get("location"):
+        return
+    history_entry = {
+        "description": issue["description"],
+        "location": issue["location"],
+        "timestamp": now_utc(),
+    }
+    _save_updated_issue(issue, history_entry, updates, source_path, ip, issues)
 
-    def _handle_needs_update(self, issue: dict[str, Any], extra: str) -> bool:
-        updates = _parse_needs_update(extra)
-        if not updates.get("description") or not updates.get("location"):
-            # LLM didn't follow the format — treat as applicable
-            print(f"NEXT {json.dumps(issue)}")
-            return True
-        history_entry = self._apply_issue_update(issue, updates)
-        log_append(self.source_path, {
-            "event": "issue_updated",
-            "fingerprint": issue["fingerprint"],
-            "old": history_entry,
-            "new": updates,
-        })
+
+def _mark_skipped_decision(
+    decision: dict[str, Any],
+    verdict: str,
+    decisions: list[dict[str, Any]],
+    dp: Path,
+    source_path: Path,
+    issue: dict[str, Any],
+) -> None:
+    decision["status"] = verdict
+    decision["last_updated"] = now_utc()
+    dp.write_text(json.dumps(decisions, indent=2), encoding="utf-8")
+    log_append(source_path, {
+        "event": "relevance_skipped",
+        "fingerprint": issue["fingerprint"],
+        "verdict": verdict,
+    })
+
+
+def _process_actionable_decision(
+    decision: dict[str, Any],
+    issue: dict[str, Any],
+    source_code: str,
+    client: anthropic.Anthropic,
+    source_path: Path,
+    ip: Path,
+    issues: list[dict[str, Any]],
+    decisions: list[dict[str, Any]],
+    dp: Path,
+) -> bool:
+    """Check relevance and emit NEXT if applicable. Returns True if NEXT was emitted."""
+    log_append(source_path, {"event": "relevance_check", "fingerprint": issue["fingerprint"]})
+    verdict, extra = _check_relevance(source_code, issue, client)
+    if verdict == "applicable":
         print(f"NEXT {json.dumps(issue)}")
         return True
+    if verdict == "needs_update":
+        _apply_needs_update(issue, extra, source_path, ip, issues)
+        print(f"NEXT {json.dumps(issue)}")
+        return True
+    if verdict not in ("impossible", "no_longer_relevant"):
+        # Unexpected verdict from LLM — treat as applicable
+        print(f"NEXT {json.dumps(issue)}")
+        return True
+    _mark_skipped_decision(decision, verdict, decisions, dp, source_path, issue)
+    return False
 
-    def _apply_issue_update(self, issue: dict[str, Any], updates: dict[str, str]) -> dict[str, Any]:
-        history_entry = {
-            "description": issue["description"],
-            "location": issue["location"],
-            "timestamp": now_utc(),
-        }
-        issue.setdefault("history", []).append(history_entry)
-        issue.update(updates)
-        issue["last_updated"] = now_utc()
-        self.ip.write_text(json.dumps(self.issues, indent=2), encoding="utf-8")
-        return history_entry
 
-    def _mark_skipped(self, decision: dict[str, Any], issue: dict[str, Any], verdict: str) -> None:
-        decision["status"] = verdict
-        decision["last_updated"] = now_utc()
-        self.dp.write_text(json.dumps(self.decisions, indent=2), encoding="utf-8")
-        log_append(self.source_path, {
-            "event": "relevance_skipped",
-            "fingerprint": issue["fingerprint"],
-            "verdict": verdict,
-        })
+def _load_run_next_data(
+    source_path: Path,
+    ip: Path,
+    dp: Path,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any], str]:
+    issues = json.loads(ip.read_text(encoding="utf-8"))
+    decisions = json.loads(dp.read_text(encoding="utf-8"))
+    issues_by_id = {issue["id"]: issue for issue in issues}
+    source_code = source_path.read_text(encoding="utf-8")
+    return issues, decisions, issues_by_id, source_code
+
+
+def _count_deferred(decisions: list[dict[str, Any]]) -> int:
+    return sum(
+        1 for d in decisions
+        if d["action"] in ("skip_for_now", "skipped_re_ask") and d["status"] == "pending"
+    )
 
 
 def run_next(source_path: Path) -> None:
     """Find the next pending implement/custom decision, check relevance, and print result."""
-    NextRunner(source_path).run()
+    ip, dp = issues_path(source_path), decisions_path(source_path)
+    issues, decisions, issues_by_id, source_code = _load_run_next_data(source_path, ip, dp)
+    client = anthropic.Anthropic()
+    actionable = [
+        d for d in decisions
+        if d["action"] in ("implement", "custom") and d["status"] == "pending"
+    ]
+    for decision in actionable:
+        issue = issues_by_id[decision["id"]]
+        done = _process_actionable_decision(
+            decision, issue, source_code, client, source_path, ip, issues, decisions, dp
+        )
+        if done:
+            return
+    print(f"DONE {_count_deferred(decisions)}")
 
 
 # ---------------------------------------------------------------------------
