@@ -6,13 +6,16 @@ import sys
 TOOLS = ["ruff", "pylint", "pyright", "vulture", "radon", "bandit", "deptry", "pip-audit"]
 
 
-def run(cmd: list[str]) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, capture_output=True, text=True)
+def run(cmd: list[str]) -> subprocess.CompletedProcess | None:
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True)
+    except OSError:
+        return None
 
 
 def get_version(tool: str) -> str | None:
     result = run([tool, "--version"])
-    if result.returncode == 0:
+    if result and result.returncode == 0:
         return result.stdout.strip() or result.stderr.strip()
     return None
 
@@ -20,8 +23,9 @@ def get_version(tool: str) -> str | None:
 def install(tool: str) -> None:
     print(f"  Installing {tool}...")
     result = run([sys.executable, "-m", "pip", "install", tool, "--break-system-packages"])
-    if result.returncode != 0:
-        print(f"  FAILED to install {tool}: {result.stderr.strip()}")
+    if not result or result.returncode != 0:
+        stderr = result.stderr.strip() if result else "command failed to run"
+        print(f"  FAILED to install {tool}: {stderr}")
         return
     version = get_version(tool)
     if version:

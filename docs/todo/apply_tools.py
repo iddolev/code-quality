@@ -34,7 +34,8 @@ def _cmd_from_template(path: Path, cmd_template: tuple[str, ...]) -> list[str]:
             for part in cmd_template]
 
 
-def _run_tool(path: Path, cmd_template: tuple[str, ...], log_file: TextIOWrapper, missing_tools: set[str]) -> None:
+def _run_tool(path: Path, cmd_template: tuple[str, ...], log_file: TextIOWrapper,
+              missing_tools: set[str]) -> None:
     """Run a single tool command and write its output to log_file."""
     cmd = _cmd_from_template(path, cmd_template)
     log_file.write(f"{TOOL_SEPARATOR} {cmd[0]} {TOOL_SEPARATOR}\n")

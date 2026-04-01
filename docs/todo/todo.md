@@ -1,6 +1,11 @@
 # To do list
 
-# Do similar to apf: 
+## Code Quality Loop
+
+Also connect it to tests that run after each change to make sure it didn't break anything.
+Very heavy in time, but that's ok.
+
+## Do similar to apf: 
 
 Can install and re-install it in a similar way under code-quality/
 
