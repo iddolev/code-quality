@@ -78,7 +78,7 @@ which calls smaller helper functions, to make the code more readable.
 
 <a id="avoid-deep-nesting"/>
 
-### Avoid Deep Nesting
+## Avoid Deep Nesting
 
 Nesting with more than 5 levels should be refactored because 
 the code becomes difficult to read and maintain.
@@ -163,7 +163,7 @@ def settle_accounts(ledgers):
 
 <a id="keep-try-and-except-close-together"/>
 
-### Keep `try` and `except` Close Together
+## Keep `try` and `except` Close Together
 
 The `except` clause handles an error that originates from a specific operation — typically the first line after `try:`. 
 When a long block of code sits between `try:` and `except`, the reader loses sight of which operation 
@@ -227,14 +227,14 @@ Now each `except` sits right next to the operation it guards, making the error-h
 
 <a id="use-class-members-instead-of-passing-values-around"/>
 
-### Use class members instead of passing values around
+## Use class members instead of passing values around
 
 This principles applies to a module having several functions that pass many values 
 (function parameters) between themselves.
 Sometimes such a case would benefit from encapsulating the functions as methods of a class 
 which has private member variable that make it unnecessary to pass a lot of values around.
 
-for example, suppose you are processing a list of log entries 
+For example, suppose you are processing a list of log entries 
 and need to track whether you are currently inside an error block 
 (which spans multiple entries). 
 You put the per-entry logic in a separate function according to the principle above:
@@ -270,7 +270,103 @@ Although in this example it may not be so obvious which approach is more readabl
 we can say that the more you have values that are being passed around, 
 the stronger the motivation to refactor the code to avoid a lot of passing around.
 
-As another example, consider
+As another example, consider a function that loads data from several sources, 
+then processes it in multiple steps — each step needing access to many of the loaded values:
+
+```python
+def run_next(source_path: Path) -> None:
+    ip = issues_path(source_path)
+    dp = decisions_path(source_path)
+    issues = json.loads(ip.read_text(encoding="utf-8"))
+    decisions = json.loads(dp.read_text(encoding="utf-8"))
+    issues_by_id = {issue["id"]: issue for issue in issues}
+    source_code = source_path.read_text(encoding="utf-8")
+    client = Client()
+    actionable = [d for d in decisions if d["status"] == "pending"]
+
+    <... more code lines here ...>
+    for decision in actionable:
+        issue = issues_by_id[decision["id"]]
+        verdict = check_relevance(source_code, issue, client)
+        if verdict == "applicable":
+            print(f"NEXT {issue}")
+            return
+        if verdict == "needs_update":
+            issue.update(parse_updates(issue))
+            ip.write_text(json.dumps(issues, indent=2), encoding="utf-8")
+            print(f"NEXT {issue}")
+            return
+        decision["status"] = verdict
+        dp.write_text(json.dumps(decisions, indent=2), encoding="utf-8")
+    print("DONE")
+```
+
+This body is too long (>20 lines). But if you naively apply the rule
+"[Break Long/Complex Sections Into Smaller Blocks](#break-long-complex-sections-into-smaller-blocks)", 
+you face a problem: `issues`, `decisions`, `issues_by_id`, `source_code`, `ip`, `dp`, and `client` 
+are all needed across steps. A naive helper function that loads them must return 4+ values:
+
+```python
+def _load_data(source_path, ip, dp):
+    issues = json.loads(ip.read_text(encoding="utf-8"))
+    decisions = json.loads(dp.read_text(encoding="utf-8"))
+    issues_by_id = {issue["id"]: issue for issue in issues}
+    source_code = source_path.read_text(encoding="utf-8")
+    return issues, decisions, issues_by_id, source_code   # ← smell: 4 return values
+
+def _process_decision(decision, issue, source_code, client,
+                       issues, decisions, ip, dp, source_path):   # ← smell: 9 parameters
+    ...
+```
+
+Returning 4 values and accepting 9 parameters are both signs that 
+the refactoring traded one form of ugliness for another. 
+The right solution here is a class, 
+because all these variables belong together as the shared state of one coherent operation:
+
+```python
+class NextRunner:
+    def __init__(self, source_path: Path):
+        self.source_path = source_path
+        self.ip = issues_path(source_path)
+        self.dp = decisions_path(source_path)
+        self.issues = json.loads(self.ip.read_text(encoding="utf-8"))
+        self.decisions = json.loads(self.dp.read_text(encoding="utf-8"))
+        self.issues_by_id = {issue["id"]: issue for issue in self.issues}
+        self.source_code = source_path.read_text(encoding="utf-8")
+        self.client = Client()
+
+    def run(self) -> None:
+        actionable = [d for d in self.decisions if d["status"] == "pending"]
+        for decision in actionable:
+            if self._process_decision(decision):
+                return
+        print("DONE")
+
+    def _process_decision(self, decision: dict) -> bool:
+        issue = self.issues_by_id[decision["id"]]
+        verdict = check_relevance(self.source_code, issue, self.client)
+        if verdict in ("applicable", "needs_update"):
+            if verdict == "needs_update":
+                self._apply_update(issue)
+            print(f"NEXT {issue}")
+            return True
+        decision["status"] = verdict
+        self.dp.write_text(json.dumps(self.decisions, indent=2), encoding="utf-8")
+        return False
+
+    def _apply_update(self, issue: dict) -> None:
+        issue.update(parse_updates(issue))
+        self.ip.write_text(json.dumps(self.issues, indent=2), encoding="utf-8")
+```
+
+Now each method is short and reads clearly, with no multi-value returns or long parameter lists. 
+The shared state (`issues`, `decisions`, `ip`, `dp`, etc.) lives in `self` where it belongs.
+
+The key insight: **when "Break Long/Complex Sections" would force you 
+to either return multiple values from a loader helper 
+or pass many arguments to processing helper functions, 
+that is a signal to use a class instead.**
 
 **Caveat:** Use this pattern when the class represents at least a somewhat meaningful domain concept, 
 not merely to avoid passing arguments. It's a judgement call: 
