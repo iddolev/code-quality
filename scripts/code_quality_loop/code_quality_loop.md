@@ -39,7 +39,7 @@ Report to the user: how many new issues were found and how many were already kno
 Run the triage script:
 
 ```bash
-python scripts/code_quality_loop/senior_se.py <source_path>
+python scripts/code_quality_loop/senior_se_triage.py <source_path>
 ```
 
 The script does two things in order:
@@ -129,7 +129,7 @@ fix changes the source file, which affects the relevance of subsequent issues.
 Call Senior SE to get the next issue to apply:
 
 ```bash
-python scripts/code_quality_loop/senior_se.py <source_path> --next
+python scripts/code_quality_loop/senior_se_next_issue.py <source_path>
 ```
 
 The script finds the next pending `implement` or `custom` decision, runs a
