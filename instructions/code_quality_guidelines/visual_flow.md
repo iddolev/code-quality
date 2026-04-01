@@ -40,20 +40,29 @@ In particular, in the definition of a function and the call to a function that h
 put each parameter on a separate line. E.g.:
 
 ```python
-def __init__(self,
-             input_location: ResourceLocation,
-             limit_number: int,
-             relevant_sections: List[str],
-             parallel_run: bool):
+def calculate(input_location: ResourceLocation,
+              limit_number: int,
+              relevant_sections: List[str],
+              parallel_run: bool) -> tuple[int, str]:
 ```
 
-However, don't apply this rule when it's unnecessary. For example, in the following snippet:
+**NOTE:** Don't create orphan parentheses, 
+i.e. the above example should NOT look like this ugly snippet:
 
 ```python
-def apply_modification(
-    text: str, 
-    rule: dict[str, str]
-) -> str:
+def calculate(
+    input_location: ResourceLocation,
+    limit_number: int,
+    relevant_sections: List[str],
+    parallel_run: bool
+) -> tuple[int, str]:
+```
+
+**Also note:** Do NOT split function parameters when it's unnecessary. For example, in the following snippet:
+
+```python
+def apply_modification(text: str, 
+                       rule: dict[str, str]) -> str:
     ....
 ```
 
