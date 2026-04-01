@@ -11,8 +11,8 @@ Although examples are shown in Python, the principles apply to any programming l
 The guidelines instruct about cosmetic/structural changes only! 
 You must preserve the exact semantic behavior of the original code:
 the output for a given input should remain the same.
-If applying a guideline would require changing logic, control flow, return values, side effects, 
-error handling behavior, or API contracts - do so very carefully.
+If applying a guideline would require changing control flow, return values, side effects, 
+or error handling behavior - do so very carefully.
 </CRITICAL>
 
 ---
@@ -22,11 +22,10 @@ error handling behavior, or API contracts - do so very carefully.
 1. [Line Splits](#line-splits)
 2. [Use Orphan Parentheses Only When Necessary](#use-orphan-parentheses-only-when-necessary)
 3. [Break Long/Complex Sections Into Smaller Blocks](#break-long-complex-sections-into-smaller-blocks)
-4. [Use Blank Lines to Separate Logical Steps](#use-blank-lines-to-separate-logical-steps)
-5. [Avoid Deep Nesting](#avoid-deep-nesting)
-6. [Keep `try` and `except` Close Together](#keep-try-and-except-close-together)
-7. [Use Class Members Instead of Passing Values Around](#use-class-members-instead-of-passing-values-around)
-8. [Class Helpers Should Use In-Class `@staticmethod` Instead of Function](#class-helpers-should-use-in-class-staticmethod-instead-of-function)
+4. [Avoid Deep Nesting](#avoid-deep-nesting)
+5. [Keep `try` and `except` Close Together](#keep-try-and-except-close-together)
+6. [Use Class Members Instead of Passing Values Around](#use-class-members-instead-of-passing-values-around)
+7. [Class Helpers Should Use In-Class `@staticmethod` Instead of Function](#class-helpers-should-use-in-class-staticmethod-instead-of-function)
 
 ---
 
@@ -135,46 +134,6 @@ You can adhere to this rule by refactoring using shorter helper functions.
 In fact, if the code block exceeds 10 lines, it should often be re-written 
 to include the high-level algorithm of the block, 
 which calls smaller helper functions, to make the code more readable.
-
-<a id="use-blank-lines-to-separate-logical-steps"/>
-
-## Use Blank Lines to Separate Logical Steps
-
-Within a function, use blank lines to group related statements into visual "paragraphs."
-Each group should represent one logical step of the function's algorithm.
-This makes the function's structure scannable at a glance,
-even when it is short enough that extracting helper functions would be overkill.
-
-For example, instead of:
-
-```python
-def create_report(records: list[Record], output_path: Path) -> None:
-    valid = [r for r in records if r.is_active]
-    totals = compute_totals(valid)
-    header = format_header(totals)
-    rows = [format_row(r) for r in valid]
-    text = header + "\n" + "\n".join(rows)
-    output_path.write_text(text, encoding="utf-8")
-    logger.info("Report written to %s", output_path)
-```
-
-use:
-
-```python
-def create_report(records: list[Record], output_path: Path) -> None:
-    valid = [r for r in records if r.is_active]
-    totals = compute_totals(valid)
-
-    header = format_header(totals)
-    rows = [format_row(r) for r in valid]
-    text = header + "\n" + "\n".join(rows)
-
-    output_path.write_text(text, encoding="utf-8")
-    logger.info("Report written to %s", output_path)
-```
-
-The three visual groups — filter/aggregate, format, write — let the reader
-grasp the function's flow without reading every line.
 
 <a id="avoid-deep-nesting"/>
 

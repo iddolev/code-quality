@@ -38,8 +38,10 @@ class Rewriter:
         if decision is None:
             print(f"Rewriter: no pending actionable decision found for id {self.issue_id}.")
             sys.exit(1)
+
         issue = self.issues_by_id[self.issue_id]
         fix_instruction = self._effective_fix(issue, decision)
+
         print(f"Rewriter: applying fix for \"{issue['fingerprint']}\" ...")
         self._apply_and_save(fix_instruction, decision)
         print("Rewriter: done.")
