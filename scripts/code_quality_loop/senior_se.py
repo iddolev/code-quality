@@ -88,6 +88,9 @@ def run(source_path: Path) -> None:
     """Age skip_for_now → skipped_re_ask, then triage all new issues."""
     ip = issues_path(source_path)
     dp = decisions_path(source_path)
+    if not ip.exists():
+        print(f"Senior SE: issues file not found: {ip}")
+        return
     issues = json.loads(ip.read_text(encoding="utf-8"))
 
     existing_decisions: list[dict[str, Any]] = (
@@ -195,6 +198,10 @@ def run_next(source_path: Path) -> None:
 
         if verdict == "needs_update":
             updates = _parse_needs_update(extra)
+            if not updates.get("description") or not updates.get("location"):
+                # LLM didn't follow the format — treat as applicable
+                print(f"NEXT {json.dumps(issue)}")
+                return
             # Preserve old values in history before overwriting
             history_entry = {
                 "description": issue["description"],
@@ -211,6 +218,11 @@ def run_next(source_path: Path) -> None:
                 "old": history_entry,
                 "new": updates,
             })
+            print(f"NEXT {json.dumps(issue)}")
+            return
+
+        if verdict not in ("impossible", "no_longer_relevant"):
+            # Unexpected verdict from LLM — treat as applicable
             print(f"NEXT {json.dumps(issue)}")
             return
 
