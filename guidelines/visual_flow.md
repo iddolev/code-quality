@@ -52,7 +52,7 @@ def calculate(input_location: ResourceLocation,
 ```python
 def apply_modification(text: str, 
                        rule: dict[str, str]) -> str:
-    ....
+    ...
 ```
 
 there is really no good reason to place each parameter on a separate line, 
@@ -182,7 +182,7 @@ def get_cutoff(filepath: str) -> Optional[datetime]:
         return None
 ```
 
-Also: nested for-loops with 2 levels are often be more readable 
+Also: nested for-loops with 2 levels often become more readable 
 by refactoring the body of the outer loop to a separate function (with its own for-loop).
 
 For example, instead of:
@@ -364,7 +364,7 @@ def run_next(source_path: Path) -> None:
     print("DONE")
 ```
 
-This body is too long (>20 lines). But if you naively apply the rule
+This body is too long (> 15 lines). But if you naively apply the rule
 "[Break Long/Complex Sections Into Smaller Blocks](#break-long-complex-sections-into-smaller-blocks)", 
 you face a problem: `issues`, `decisions`, `issues_by_id`, `source_code`, `ip`, `dp`, and `client` 
 are all needed across steps. A naive helper function that loads them must return 4+ values:
