@@ -23,6 +23,7 @@ error handling behavior, or API contracts - do so very carefully.
 2. [Break Long/Complex Sections Into Smaller Blocks](#break-long-complex-sections-into-smaller-blocks)
 3. [Avoid Deep Nesting](#avoid-deep-nesting)
 4. [Keep `try` and `except` Close Together](#keep-try-and-except-close-together)
+5. [Use Class Members Instead of Passing Values Around](#use-class-members-instead-of-passing-values-around)
 
 ---
 
@@ -227,7 +228,7 @@ Now each `except` sits right next to the operation it guards, making the error-h
 
 <a id="use-class-members-instead-of-passing-values-around"/>
 
-## Use class members instead of passing values around
+## Use Class Members Instead of Passing Values Around
 
 This principles applies to a module having several functions that pass many values 
 (function parameters) between themselves.
