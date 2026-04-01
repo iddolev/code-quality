@@ -24,6 +24,7 @@ error handling behavior, or API contracts - do so very carefully.
 3. [Avoid Deep Nesting](#avoid-deep-nesting)
 4. [Keep `try` and `except` Close Together](#keep-try-and-except-close-together)
 5. [Use Class Members Instead of Passing Values Around](#use-class-members-instead-of-passing-values-around)
+6. [Class Helpers Should Use In-Class `@staticmethod` Instead of Function](#class-helpers-should-use-in-class-staticmethod-instead-of-function)
 
 ---
 
@@ -32,6 +33,8 @@ error handling behavior, or API contracts - do so very carefully.
 ## Line Splits
 
 Long lines should be split rather than allowing them to overflow beyond 100 characters. They should be split in logical places.
+
+### Example 1: Split Function Parameters Onto Separate Lines
 
 In particular, in the definition of a function and the call to a function that has many parameters,
 put each parameter on a separate line. E.g.:
@@ -43,6 +46,26 @@ def __init__(self,
              relevant_sections: List[str],
              parallel_run: bool):
 ```
+
+However, don't apply this rule when it's unnecessary. For example, in the following snippet:
+
+```python
+def apply_modification(
+    text: str, 
+    rule: dict[str, str]
+) -> str:
+    ....
+```
+
+there is really no good reason to place each parameter on a separate line, 
+because everything can fit in a single, more streamlined line:
+
+```python
+def apply_modification(text: str, rule: dict[str, str]) -> str:
+    ....
+```
+
+### Example 2: Split Multi-Clause Comprehensions
 
 Another example:
 When you have two "for" sections in a comprehension, put each on a separate line. E.g., instead of:
@@ -235,7 +258,7 @@ This principles applies to a module having several functions that pass many valu
 Sometimes such a case would benefit from encapsulating the functions as methods of a class 
 which has private member variable that make it unnecessary to pass a lot of values around.
 
-### Example 1: [TBD find good name]
+### Example 1: State That Persists Across Loop Iterations
 
 For example, suppose you are processing a list of log entries 
 and need to track whether you are currently inside an error block 
@@ -273,7 +296,7 @@ Although in this example it may not be so obvious which approach is more readabl
 we can say that the more you have values that are being passed around, 
 the stronger the motivation to refactor the code to avoid a lot of passing around.
 
-### Example 2: [TBD find good name]
+### Example 2: Many Shared Values Across Processing Steps
 
 As another example, consider a function that loads data from several sources, 
 then processes it in multiple steps — each step needing access to many of the loaded values:
@@ -379,6 +402,8 @@ Wrapping unrelated variables in a class just to reduce function parameters
 may trade explicit data flow for hidden mutable state, 
 which can make the code harder to reason about and debug.
 
+<a id="class-helpers-should-use-in-class-staticmethod-instead-of-function"/>
+
 ## Class Helpers Should Use In-Class `@staticmethod` Instead of Function
 
 When a helper function is logically part of a class's algorithm — 
@@ -391,7 +416,7 @@ that these functions belong to the class's operation.
 
 **Rule:** If a helper function is only ever called from within one class, define it as a `@staticmethod` on that class.
 
-For example, after applying the ["Use Class Members Instead of Passing Values Around"]([TBD add the link]) 
+For example, after applying the ["Use Class Members Instead of Passing Values Around"](#use-class-members-instead-of-passing-values-around)
 refactoring, an LLM might produce:
 
 ```python
