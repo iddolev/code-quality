@@ -39,5 +39,8 @@ def strip_markdown_fence(text: str) -> str:
     """Strip a markdown code fence if present; otherwise return the text unchanged."""
     stripped = text.strip()
     if stripped.startswith("```"):
-        return stripped.split("\n", 1)[1].rsplit("```", 1)[0]
+        lines = stripped.split("\n", 1)
+        if len(lines) < 2:
+            return text
+        return lines[1].rsplit("```", 1)[0]
     return text

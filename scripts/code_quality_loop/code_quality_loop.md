@@ -65,7 +65,8 @@ human review, and how many previously-skipped issues will be re-asked.
 
 ## Phase 3 — Human Review
 
-Read the relevant `.decisions.json` file and collect all records with
+Read both `.decisions.json` and `.issues.json` for the source file. Join them by
+`id` to assemble the full picture for each issue. Collect all decision records with
 `action: needs_human_approval` or `action: skipped_re_ask`.
 If there are none, skip this phase entirely.
 
