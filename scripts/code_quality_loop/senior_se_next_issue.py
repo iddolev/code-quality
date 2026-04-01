@@ -22,43 +22,6 @@ from common import decisions_path, issues_path, load_prompt, log_append, now_utc
 _MODEL = "claude-opus-4-6"
 
 
-def _check_relevance(
-    source_code: str,
-    issue: dict[str, Any],
-    client: anthropic.Anthropic,
-) -> tuple[str, str]:
-    """Return (verdict, extra). verdict is one of:
-      applicable         — issue still exists, fix can be applied as-is
-      needs_update       — issue still exists but description/location have shifted;
-                           extra contains the updated fields as a raw string
-      impossible         — fix cannot be applied (location/structure gone)
-      no_longer_relevant — issue already resolved by a prior fix
-    """
-    system_prompt = load_prompt("relevance_check_prompt.md")
-    user_content = f"{source_code}\n\n---ISSUE---\n{json.dumps(issue, indent=2)}"
-    response = client.messages.create(
-        model=_MODEL,
-        max_tokens=512,
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_content}],
-    )
-    raw = response.content[0].text.strip()
-    first_line = raw.splitlines()[0].strip().lower()
-    extra = "\n".join(raw.splitlines()[1:]).strip()
-    return first_line, extra
-
-
-def _parse_needs_update(extra: str) -> dict[str, str]:
-    """Parse 'description: ...' and 'location: ...' lines from needs_update extra."""
-    result: dict[str, str] = {}
-    for line in extra.splitlines():
-        if line.startswith("description:"):
-            result["description"] = line[len("description:"):].strip()
-        elif line.startswith("location:"):
-            result["location"] = line[len("location:"):].strip()
-    return result
-
-
 class NextRunner:
     def __init__(self, source_path: Path):
         self.source_path = source_path
@@ -87,8 +50,11 @@ class NextRunner:
     def _process_decision(self, decision: dict[str, Any]) -> bool:
         """Check relevance and emit NEXT if applicable. Returns True if NEXT was emitted."""
         issue = self.issues_by_id[decision["id"]]
-        log_append(self.source_path, {"event": "relevance_check", "fingerprint": issue["fingerprint"]})
-        verdict, extra = _check_relevance(self.source_code, issue, self.client)
+        log_append(self.source_path, {
+            "event": "relevance_check",
+            "fingerprint": issue["fingerprint"],
+        })
+        verdict, extra = self._check_relevance(self.source_code, issue, self.client)
         if verdict == "applicable":
             print(f"NEXT {json.dumps(issue)}")
             return True
@@ -102,7 +68,7 @@ class NextRunner:
         return False
 
     def _handle_needs_update(self, issue: dict[str, Any], extra: str) -> bool:
-        updates = _parse_needs_update(extra)
+        updates = self._parse_needs_update(extra)
         if not updates.get("description") or not updates.get("location"):
             # LLM didn't follow the format — treat as applicable
             print(f"NEXT {json.dumps(issue)}")
@@ -138,6 +104,43 @@ class NextRunner:
             "fingerprint": issue["fingerprint"],
             "verdict": verdict,
         })
+
+    @staticmethod
+    def _check_relevance(
+        source_code: str,
+        issue: dict[str, Any],
+        client: anthropic.Anthropic,
+    ) -> tuple[str, str]:
+        """Return (verdict, extra). verdict is one of:
+          applicable         — issue still exists, fix can be applied as-is
+          needs_update       — issue still exists but description/location have shifted;
+                               extra contains the updated fields as a raw string
+          impossible         — fix cannot be applied (location/structure gone)
+          no_longer_relevant — issue already resolved by a prior fix
+        """
+        system_prompt = load_prompt("relevance_check_prompt.md")
+        user_content = f"{source_code}\n\n---ISSUE---\n{json.dumps(issue, indent=2)}"
+        response = client.messages.create(
+            model=_MODEL,
+            max_tokens=512,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_content}],
+        )
+        raw = response.content[0].text.strip()
+        first_line = raw.splitlines()[0].strip().lower()
+        extra = "\n".join(raw.splitlines()[1:]).strip()
+        return first_line, extra
+
+    @staticmethod
+    def _parse_needs_update(extra: str) -> dict[str, str]:
+        """Parse 'description: ...' and 'location: ...' lines from needs_update extra."""
+        result: dict[str, str] = {}
+        for line in extra.splitlines():
+            if line.startswith("description:"):
+                result["description"] = line[len("description:"):].strip()
+            elif line.startswith("location:"):
+                result["location"] = line[len("location:"):].strip()
+        return result
 
 
 def run_next(source_path: Path) -> None:
