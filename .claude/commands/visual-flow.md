@@ -21,7 +21,7 @@ Read the file @guidelines/visual_flow.md to load all the visual flow rules.
 
 ## Apply guidelines in parallel
 
-Use the Agent tool to process files in parallel. For each target file, determine the log path as `/tmp/<relative_filepath>.vf.jsonl` (e.g. for `scripts/foo.py` the log is `/tmp/scripts/foo.py.vf.jsonl`). Spawn a separate agent with the following prompt (filling in `<filepath>` and `<log_path>`):
+Use the Agent tool to process files in parallel. For each target file, determine the log path as `/temp/<relative_filepath>.vf.jsonl` (e.g. for `scripts/foo.py` the log is `/temp/scripts/foo.py.vf.jsonl`). Spawn a separate agent with the following prompt (filling in `<filepath>` and `<log_path>`):
 
 > Apply the visual flow guidelines on the file `<filepath>`.
 >
@@ -36,6 +36,8 @@ Use the Agent tool to process files in parallel. For each target file, determine
 >
 > Use the Bash tool to append each line: `echo '<json>' >> <log_path>`.
 >
-> After applying fixes, report that a log of changes was written to `<log_path>`. If no violations were found, report that the file is already compliant (and write nothing to the log).
+> After applying fixes, report that a log of changes was written to `<log_path>`, 
+> and do NOT output any summary (because the log is enough).
+> If no violations were found, report that the file is already compliant (and write nothing to the log).
 
 Send all Agent tool calls in a single message so they run in parallel. Once all agents complete, summarize the results to the user.
