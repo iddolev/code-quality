@@ -30,10 +30,21 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROMPT_TEMPLATE_PATH = SCRIPT_DIR / "visual_flow_prompt.md"
+_PROMPT_TEMPLATE = PROMPT_TEMPLATE_PATH.read_text(encoding="utf-8")
 _CLIENT = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 _MODEL = "claude-opus-4-6"
 
 VALID_SCOPES = {"local", "medium", "file"}
+
+CODE_EXTENSIONS = {
+    ".py", ".js", ".ts", ".tsx", ".jsx",
+    ".java", ".kt", ".go", ".rs", ".rb",
+    ".c", ".cpp", ".h", ".hpp", ".cs",
+    ".swift", ".scala", ".sh", ".bash",
+}
+
+
+_RULES: list[dict] = []
 
 
 def parse_rules(guidelines_path: Path) -> list[dict]:
@@ -278,11 +289,11 @@ def compute_log_path(source_path: Path) -> Path:
     return Path("/temp") / f"{relative}.vf.jsonl"
 
 
-def _apply_rule(rule: dict, current_code: str, prompt_template: str,
+def _apply_rule(rule: dict, current_code: str,
                 source_path: Path, log_path: Path) -> str | None:
     """Check a single rule against the code and apply the fix if needed. Returns the (possibly updated) code."""
     print(f"Checking rule {rule['id']}: {rule['title']} (scope: {rule['scope']})...")
-    prompt = build_prompt(rule, current_code, prompt_template)
+    prompt = build_prompt(rule, current_code, _PROMPT_TEMPLATE)
     response_text = call_claude(prompt)
     result = parse_claude_response(response_text)
 
@@ -309,17 +320,11 @@ def _apply_rule(rule: dict, current_code: str, prompt_template: str,
     return new_text
 
 
-def run(guidelines_path: Path, source_path: Path) -> Path:
+def process_file(source_path: Path) -> Path:
     """Apply all visual flow rules to the source file.
 
     Returns the path to the modified copy of the file.
     """
-    rules = parse_rules(guidelines_path)
-    if not rules:
-        print("No rules found in guidelines file.", file=sys.stderr)
-        sys.exit(1)
-
-    prompt_template = PROMPT_TEMPLATE_PATH.read_text(encoding="utf-8")
     code = source_path.read_text(encoding="utf-8")
     log_path = compute_log_path(source_path)
 
@@ -336,9 +341,9 @@ def run(guidelines_path: Path, source_path: Path) -> Path:
         iteration += 1
         print(f"--- Starting iteration {iteration} ---")
         changed = False
-        for rule in rules:
+        for rule in _RULES:
             while True:
-                new_code = _apply_rule(rule, current_code, prompt_template, source_path, log_path)
+                new_code = _apply_rule(rule, current_code, source_path, log_path)
                 if new_code is None:
                     break
                 changed = any_change = True
@@ -358,12 +363,24 @@ def run(guidelines_path: Path, source_path: Path) -> Path:
     return output_path
 
 
+def _collect_files(source: Path) -> list[Path]:
+    """Collect code files from a path. If a file, return it; if a directory, recurse for code files."""
+    if source.is_file():
+        return [source]
+    if source.is_dir():
+        return sorted(
+            p for p in source.rglob("*")
+            if p.is_file() and p.suffix in CODE_EXTENSIONS
+        )
+    return []
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Apply visual flow guidelines to a source file using Claude."
+        description="Apply visual flow guidelines to a source file or folder using Claude."
     )
     parser.add_argument("guidelines", type=Path, help="Path to the guidelines markdown file.")
-    parser.add_argument("source", type=Path, help="Path to the source code file to check.")
+    parser.add_argument("source", type=Path, help="Path to a source code file or folder.")
     return parser.parse_args()
 
 
@@ -373,9 +390,20 @@ def main() -> None:
         print(f"Error: guidelines file not found: {args.guidelines}", file=sys.stderr)
         sys.exit(1)
     if not args.source.exists():
-        print(f"Error: source file not found: {args.source}", file=sys.stderr)
+        print(f"Error: source path not found: {args.source}", file=sys.stderr)
         sys.exit(1)
-    run(args.guidelines, args.source)
+    files = _collect_files(args.source)
+    if not files:
+        print(f"No code files found in: {args.source}", file=sys.stderr)
+        sys.exit(1)
+    global _RULES
+    _RULES = parse_rules(args.guidelines)
+    if not _RULES:
+        print("No rules found in guidelines file.", file=sys.stderr)
+        sys.exit(1)
+    for file_path in files:
+        print(f"\n{'='*60}\nProcessing: {file_path}\n{'='*60}")
+        process_file(file_path)
 
 
 if __name__ == "__main__":
