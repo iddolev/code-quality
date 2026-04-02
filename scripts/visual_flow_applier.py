@@ -88,7 +88,7 @@ def parse_rules(guidelines_path: Path) -> list[dict]:
     return rules
 
 
-def build_prompt(rule: dict, code: str, prompt_template: str) -> str:
+def build_prompt(rule: dict, code: str) -> str:
     """Build the full prompt for Claude by combining template, scope section, rule, and code."""
     # parts = prompt_template.split("@@@")
     # before = parts[0].rstrip()
@@ -100,10 +100,11 @@ def build_prompt(rule: dict, code: str, prompt_template: str) -> str:
     #
     # prompt = f"{before}\n\n{scope_block}\n\n{middle}"
 
+    prompt_template = _PROMPT_TEMPLATE.replace("#<N>", f"#<{rule['id']}>")
     return (
         f"{prompt_template}\n\n"
         f"---\n\n"
-        f"## Rule: {rule['body'][6:]}\n\n"
+        f"## Rule {rule['body'][3:]}\n\n"
         f"---\n\n"
         f"## Code:\n\n```\n{code}\n```"
     )
@@ -144,8 +145,10 @@ def _extract_json_object(text: str) -> str | None:
     text = text.strip()
     start_pos = text.find('{"rule":"')
     if start_pos < 0:
-        print("Warning: no JSON object starting with '{\"rule\":\"' found in response.", file=sys.stderr)
-        return None
+        start_pos = text.find('{\n"rule":')
+        if start_pos < 0:
+            print("Warning: no JSON object starting with '{\"rule\":\"' found in response.", file=sys.stderr)
+            return None
     if text.endswith('}'):
         # Assume the JSON string goes till the end of the text
         return text[start_pos:]
@@ -156,7 +159,7 @@ def _extract_json_object(text: str) -> str | None:
 def parse_claude_response(response: str) -> dict | None:
     """Parse Claude's JSON response. Returns None if no violation found."""
     response = response.strip()
-    if response == '{}':
+    if response.endswith('{}'):
         return None
     try:
         data = json.loads(response)
@@ -294,7 +297,7 @@ def _apply_rule(rule: dict, current_code: str,
                 source_path: Path, log_path: Path) -> str | None:
     """Check a single rule against the code and apply the fix if needed. Returns the (possibly updated) code."""
     print(f"Checking rule {rule['id']}: {rule['title']} (scope: {rule['scope']})...")
-    prompt = build_prompt(rule, current_code, _PROMPT_TEMPLATE)
+    prompt = build_prompt(rule, current_code)
     response_text = call_claude(prompt)
     result = parse_claude_response(response_text)
 
