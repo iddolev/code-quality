@@ -327,6 +327,8 @@ def process_file(source_path: Path) -> Path:
     """
     code = source_path.read_text(encoding="utf-8")
     log_path = compute_log_path(source_path)
+    if log_path.exists():
+        log_path.unlink()
 
     output_path = source_path.with_suffix(f".after{source_path.suffix}")
     current_code = code
