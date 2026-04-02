@@ -101,10 +101,12 @@ def _extract_scope_block(scope_sections: str, scope_key: str) -> str:
     """Extract the text for a given scope key from the YAML section after '---'."""
     parts = scope_sections.split("---", 1)
     if len(parts) < 2:
-        return ""   # TODO: print error message to stderr
+        print("Warning: no '---' separator found in scope sections.", file=sys.stderr)
+        return ""
     scope_map = yaml.safe_load(parts[1])
     if not isinstance(scope_map, dict) or scope_key not in scope_map:
-        return ""  # TODO: print error message to stderr
+        print(f"Warning: scope '{scope_key}' not found in YAML scope definitions.", file=sys.stderr)
+        return ""
     return scope_map[scope_key].strip()
 
 
