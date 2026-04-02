@@ -12,6 +12,7 @@ The user triggers this workflow with an input argument which is a source file pa
 ```
 
 All four phases operate on sibling files next to the source code file:
+
 - `<file>.issues.json` — critic output
 - `<file>.decisions.json` — triage + human decisions
 - `<file>.log.jsonl` — append-only structured log of relevance checks and issue updates
@@ -53,7 +54,6 @@ The script does two things in order:
    - `implement` — safe to apply automatically
    - `no` — should not be applied
    - `needs_human_approval` — requires human judgement
-
    Each record also contains the reason why the senior SE made this decision.
 
 No human input is involved in this phase.
@@ -107,6 +107,7 @@ it by `id` and applying these fields:
 | Do something different | `custom` | also set `custom_fix` to the instruction |
 
 In all cases also set:
+
 - `decision_by: "human"`
 - `last_updated: <current UTC timestamp>`
 - keep `status: "pending"` (the rewriter will mark it `done`)
@@ -121,12 +122,12 @@ rejected, deferred, or given a custom instruction. Then proceed to Phase 4.
 ## Phase 4 — Rewriter
 
 Apply fixes one at a time using a loop. Each iteration asks Senior SE for the next
-relevant issue, then immediately applies it before checking the next — because each
-fix changes the source file, which affects the relevance of subsequent issues.
+relevant issue, then immediately applies it before checking the next issue — each
+fix changes the source file, so this may affect the relevance of subsequent issues.
 
 ### Loop
 
-Call Senior SE to get the next issue to apply:
+Call Senior SE to get the next issue that should be applied:
 
 ```bash
 python scripts/code_quality_loop/senior_se_next_issue.py <source_path>
@@ -140,12 +141,10 @@ relevance check against the current source file, and writes one of:
 
 The relevance check has four possible verdicts. The script handles them internally:
 
-| Verdict | What the script does |
-|---|---|
-| `applicable` | Returns `NEXT` with the original issue unchanged |
-| `needs_update` | Appends `{description, location, timestamp}` to a `history` list on the issue record in `issues.json` (preserving the old values), then overwrites description and location with the updated values, and returns `NEXT` with the refreshed issue |
-| `no_longer_relevant` | Marks the decision as `no_longer_relevant` in `decisions.json`, moves to the next decision |
-| `impossible` | Marks the decision as `impossible` in `decisions.json`, moves to the next decision |
+- `applicable` - Returns `NEXT` with the original issue unchanged
+- `needs_update` - Appends `{description, location, timestamp}` to a `history` list on the issue record in `issues.json` (preserving the old values), then overwrites description and location with the updated values, and returns `NEXT` with the refreshed issue
+- `no_longer_relevant` - Marks the decision as `no_longer_relevant` in `decisions.json`, moves to the next decision
+- `impossible` - Marks the decision as `impossible` in `decisions.json`, moves to the next decision |
 
 If the response is `NEXT <json>`, run the rewriter for that issue:
 

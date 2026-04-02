@@ -32,8 +32,8 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PROMPT_TEMPLATE_PATH = SCRIPT_DIR / "visual_flow_prompt.md"
 _PROMPT_TEMPLATE = PROMPT_TEMPLATE_PATH.read_text(encoding="utf-8")
 _CLIENT = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-_MODEL = "claude-opus-4-6"
-_REPETITIONS = 2
+_MODEL = "claude-sonnet-4-6"
+_REPETITIONS = 1
 
 VALID_SCOPES = {"local", "medium", "file"}
 
@@ -388,17 +388,17 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("guidelines", type=Path, help="Path to the guidelines markdown file.")
     parser.add_argument("source", type=Path, help="Path to a source code file or folder.")
-    parser.add_argument("--cheap", action="store_true",
-                        help="Use Sonnet instead of Opus and only 1 repetition.")
+    parser.add_argument("--full", action="store_true",
+                        help="Use Opus instead of Sonnet and do one extra repetition.")
     return parser.parse_args()
 
 
 def main() -> None:
     global _MODEL, _REPETITIONS
     args = _parse_args()
-    if args.cheap:
-        _MODEL = "claude-sonnet-4-6"
-        _REPETITIONS = 1
+    if args.full:
+        _MODEL = "claude-opus-4-6"
+        _REPETITIONS = 2
     if not args.guidelines.exists():
         print(f"Error: guidelines file not found: {args.guidelines}", file=sys.stderr)
         sys.exit(1)

@@ -4,11 +4,11 @@ argument-hint: "<file-or-folder (optional)>"
 ---
 
 - If `$ARGUMENTS` is empty, consider it as if it was '.'
-- If `$ARGUMENTS` contains the word `cheap`, add `--cheap` to the script invocation and remove it from the target path.
+- If `$ARGUMENTS` contains `--full`, add `--full` to the script invocation and remove it from the target path.
 - If the target is a single file, run the script on it directly:
 
 ```bash
-python scripts/visual_flow_applier.py guidelines/visual_flow.md <file> [--cheap]
+python scripts/visual_flow_applier.py guidelines/visual_flow.md <file> [--full]
 ```
 
 - If the target is a folder, first list all code files in it, then run the script on **each file separately** so you can report progress between files. Use `find` or glob to collect files with code extensions (.py, .js, .ts, .tsx, .jsx, .java, .kt, .go, .rs, .rb, .c, .cpp, .h, .hpp, .cs, .swift, .scala, .sh, .bash).

@@ -18,4 +18,4 @@ python .\scripts\install-tools.py
 
 ## Tools
 
-
+2. .claude/commands/python-static-analysis-suite.md  -- uses .claude/scripts/python_static_analysis_suite.py
