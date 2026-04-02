@@ -111,6 +111,29 @@ def _list_continuation_indent(line: str) -> str:
     return _detect_indent(line)
 
 
+def _should_skip_wrapping(line: str) -> bool:
+    """True if this line should not be wrapped (table row or URL line)."""
+    return _is_table_row(line) or _is_url_line(line)
+
+
+def _wrap_single_line(line: str) -> list[str]:
+    """Wrap a single long non-code line, returning a list of wrapped lines."""
+    if _is_list_item_start(line):
+        subsequent_indent = _list_continuation_indent(line)
+    else:
+        subsequent_indent = _detect_indent(line)
+
+    wrapped = textwrap.fill(
+        line,
+        width=MAX_LINE_LENGTH,
+        initial_indent="",
+        subsequent_indent=subsequent_indent,
+        break_long_words=False,
+        break_on_hyphens=False,
+    )
+    return wrapped.split("\n")
+
+
 def wrap_long_lines(lines: list[str]) -> list[str]:
     """Rule 2: Wrap lines exceeding 120 characters."""
     result = []
@@ -119,30 +142,12 @@ def wrap_long_lines(lines: list[str]) -> list[str]:
         if _CODE_FENCE_RE.match(line):
             in_code_fence = not in_code_fence
             result.append(line)
-            continue
-
-        if in_code_fence or len(line) <= MAX_LINE_LENGTH:
+        elif in_code_fence or len(line) <= MAX_LINE_LENGTH:
             result.append(line)
-            continue
-
-        if _is_table_row(line) or _is_url_line(line):
+        elif _should_skip_wrapping(line):
             result.append(line)
-            continue
-
-        if _is_list_item_start(line):
-            subsequent_indent = _list_continuation_indent(line)
         else:
-            subsequent_indent = _detect_indent(line)
-
-        wrapped = textwrap.fill(
-            line,
-            width=MAX_LINE_LENGTH,
-            initial_indent="",
-            subsequent_indent=subsequent_indent,
-            break_long_words=False,
-            break_on_hyphens=False,
-        )
-        result.extend(wrapped.split("\n"))
+            result.extend(_wrap_single_line(line))
 
     return result
 
@@ -172,19 +177,41 @@ def _is_list_continuation(line: str, list_indent_depth: int) -> bool:
     return indent >= list_indent_depth
 
 
+def _skip_frontmatter(lines: list[str]) -> int:
+    """Return the index of the first line after YAML frontmatter, or 0."""
+    if lines and _is_frontmatter_fence(lines[0]):
+        for j in range(1, len(lines)):
+            if _is_frontmatter_fence(lines[j]):
+                return j + 1
+    return 0
+
+
+def _update_list_state(line: str, in_list: bool, list_indent_depth: int,
+                       result: list[str]) -> tuple[bool, int]:
+    """Handle list enter/exit logic, returning updated (in_list, list_indent_depth)."""
+    is_item = _is_list_item_start(line)
+    is_continuation = in_list and _is_list_continuation(line, list_indent_depth)
+
+    if is_item:
+        if not in_list:
+            if result and not _is_heading(result[-1]):
+                _ensure_blank_line(result)
+            in_list = True
+        list_indent_depth = len(_list_continuation_indent(line))
+    elif not is_continuation and not _is_blank(line):
+        if in_list:
+            _ensure_blank_line(result)
+            in_list = False
+
+    return in_list, list_indent_depth
+
+
 def fix_heading_and_list_spacing(lines: list[str]) -> list[str]:
     """Rules 3-5: Fix blank-line spacing around headings and lists."""
     if not lines:
         return lines
 
-    # Skip YAML frontmatter
-    start = 0
-    if lines and _is_frontmatter_fence(lines[0]):
-        for j in range(1, len(lines)):
-            if _is_frontmatter_fence(lines[j]):
-                start = j + 1
-                break
-
+    start = _skip_frontmatter(lines)
     result = list(lines[:start])
 
     in_code_fence = False
@@ -203,28 +230,8 @@ def fix_heading_and_list_spacing(lines: list[str]) -> list[str]:
             result.append(line)
             continue
 
-        is_item = _is_list_item_start(line)
-        is_continuation = in_list and _is_list_continuation(line, list_indent_depth)
-
-        # Determine if we're entering, continuing, or leaving a list
-        if is_item:
-            if not in_list:
-                # Rule 4: blank line before the start of a new list
-                if result and not _is_heading(result[-1]):
-                    _ensure_blank_line(result)
-                in_list = True
-            list_indent_depth = len(_list_continuation_indent(line))
-        elif is_continuation:
-            # still inside the list
-            pass
-        elif _is_blank(line):
-            # blank lines don't end a list by themselves
-            pass
-        else:
-            if in_list:
-                # Rule 5: blank line after the end of a list
-                _ensure_blank_line(result)
-                in_list = False
+        in_list, list_indent_depth = _update_list_state(
+            line, in_list, list_indent_depth, result)
 
         if result and _is_heading(result[-1]) and not _is_blank(line):
             result.append("")

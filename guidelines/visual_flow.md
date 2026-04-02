@@ -33,6 +33,8 @@ or error handling behavior - do so very carefully.
 
 ## 1. Line Splits
 
+> scope: local
+
 Long lines should be split rather than allowing them to overflow beyond 100 characters. They should be split in logical places.
 
 ### Example 1: Split Function Parameters Onto Separate Lines
@@ -88,6 +90,8 @@ please go over the code and make sure lines are split in reasonable places.
 
 ## 2. Use Orphan Parentheses Only When Necessary
 
+> scope: local
+
 Don't create orphan parentheses for short operators.
 The example from the previous chapter should NOT look like this ugly snippet:
 
@@ -125,6 +129,8 @@ def apply_a_very_long_string_just_to_make_the_point(
 
 ## 3. Break Long/Complex Sections Into Smaller Blocks
 
+> scope: medium
+
 Break large blocks by refactoring into smaller chunks:
 
 Any code block, e.g. a function body, the body of a for/while loop, etc., 
@@ -138,6 +144,8 @@ which calls smaller helper functions, to make the code more readable.
 <a id="4-avoid-deep-nesting"/>
 
 ## 4. Avoid Deep Nesting
+
+> scope: medium
 
 Nesting with more than 5 levels should be refactored because 
 the code becomes difficult to read and maintain.
@@ -228,6 +236,8 @@ def settle_accounts(ledgers):
 
 ## 5. Keep `try` and `except` Close Together
 
+> scope: medium
+
 The `except` clause handles an error that originates from a specific operation — typically the first line after `try:`. 
 When a long block of code sits between `try:` and `except`, the reader loses sight of which operation 
 the exception handler belongs to. It also risks catching exceptions that were thrown by unrelated code inside the block.
@@ -291,6 +301,8 @@ Now each `except` sits right next to the operation it guards, making the error-h
 <a id="6-use-class-members-instead-of-passing-values-around"/>
 
 ## 6. Use Class Members Instead of Passing Values Around
+
+> scope: file
 
 This principles applies to a module having several functions that pass many values 
 (function parameters) between themselves.
@@ -444,6 +456,8 @@ which can make the code harder to reason about and debug.
 <a id="7-class-helpers-should-use-in-class-staticmethod-instead-of-function"/>
 
 ## 7. Class Helpers Should Use In-Class `@staticmethod` Instead of Function
+
+> scope: file
 
 When a helper function is logically part of a class's algorithm — 
 i.e. it is only called by methods of that class — 
