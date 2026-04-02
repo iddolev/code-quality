@@ -33,6 +33,7 @@ PROMPT_TEMPLATE_PATH = SCRIPT_DIR / "visual_flow_prompt.md"
 _PROMPT_TEMPLATE = PROMPT_TEMPLATE_PATH.read_text(encoding="utf-8")
 _CLIENT = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 _MODEL = "claude-opus-4-6"
+_REPETITIONS = 2
 
 VALID_SCOPES = {"local", "medium", "file"}
 
@@ -337,7 +338,8 @@ def process_file(source_path: Path) -> Path:
     # LLM are not deterministic, and sometimes they don't find a rule violation on the first try
     # but only on the second try. So we try twice.
     # Also, after a change by one rule, a new opportunity to apply an earlier rule arises.
-    again = 2
+    repetitions = _REPETITIONS
+    again = repetitions
     iteration = 0
     while again > 0:
         iteration += 1
@@ -351,7 +353,7 @@ def process_file(source_path: Path) -> Path:
                 changed = any_change = True
                 current_code = new_code
         if changed:
-            again = 2
+            again = repetitions
         else:
             again -= 1
 
@@ -383,11 +385,17 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("guidelines", type=Path, help="Path to the guidelines markdown file.")
     parser.add_argument("source", type=Path, help="Path to a source code file or folder.")
+    parser.add_argument("--cheap", action="store_true",
+                        help="Use Sonnet instead of Opus and only 1 repetition.")
     return parser.parse_args()
 
 
 def main() -> None:
+    global _MODEL, _REPETITIONS
     args = _parse_args()
+    if args.cheap:
+        _MODEL = "claude-sonnet-4-6"
+        _REPETITIONS = 1
     if not args.guidelines.exists():
         print(f"Error: guidelines file not found: {args.guidelines}", file=sys.stderr)
         sys.exit(1)
