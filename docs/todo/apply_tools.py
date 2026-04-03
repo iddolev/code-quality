@@ -34,12 +34,13 @@ def _cmd_from_template(path: Path, cmd_template: tuple[str, ...]) -> list[str]:
             for part in cmd_template]
 
 
-def _run_tool(path: Path, cmd_template: tuple[str, ...], log_file: TextIOWrapper, missing_tools: list[str]) -> None:
+def _run_tool(path: Path, cmd_template: tuple[str, ...], log_file: TextIOWrapper,
+              missing_tools: set[str]) -> None:
     """Run a single tool command and write its output to log_file."""
     cmd = _cmd_from_template(path, cmd_template)
     log_file.write(f"{TOOL_SEPARATOR} {cmd[0]} {TOOL_SEPARATOR}\n")
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
         if result.stdout:
             log_file.write(result.stdout)
             if not result.stdout.endswith("\n"):
@@ -49,13 +50,16 @@ def _run_tool(path: Path, cmd_template: tuple[str, ...], log_file: TextIOWrapper
                 log_file.write(f"[stderr] {line}\n")
         if not result.stdout and not result.stderr:
             log_file.write("No issues found.\n")
+        log_file.write(f"Exit code: {result.returncode}\n")
     except FileNotFoundError:
         log_file.write(f"ERROR: {cmd[0]} is not installed.\n")
-        missing_tools.append(cmd[0])
+        missing_tools.add(cmd[0])
+    except subprocess.TimeoutExpired:
+        log_file.write(f"ERROR: {cmd[0]} timed out after 300 seconds.\n")
     log_file.write("\n")
 
 
-def _check_file(path: Path, log_file: TextIOWrapper, missing_tools: list[str]) -> None:
+def _check_file(path: Path, log_file: TextIOWrapper, missing_tools: set[str]) -> None:
     """Run all file-level quality tools on a single Python file."""
     for cmd_template in FILE_TOOLS:
         _run_tool(path, cmd_template, log_file, missing_tools)
@@ -72,15 +76,15 @@ def _collect_python_files(folder: Path) -> list[Path]:
 
 
 def _build_log_path(target: Path) -> Path:
-    """Build the log file path: tmp/quality_review/<name>_YYYYMMDDhhmm.log."""
+    """Build the log file path: tmp/quality_review/<name>_YYYYMMDDhhmmss.log."""
     name = target.stem if target.is_file() else target.name
-    timestamp = datetime.now().strftime("%Y%m%d%H%M")
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     log_dir = Path("tmp/quality_review")
     log_dir.mkdir(parents=True, exist_ok=True)
     return log_dir / f"{name}_{timestamp}.log"
 
 
-def _run_checks(path: Path, log_file: TextIOWrapper, missing_tools: list[str]) -> None:
+def _run_checks(path: Path, log_file: TextIOWrapper, missing_tools: set[str]) -> None:
     """Run file-level and folder-level checks, dispatching by path type."""
     if path.is_file():
         if path.suffix.lower() != ".py":
@@ -115,16 +119,23 @@ def main() -> None:
         sys.exit(1)
 
     log_path = _build_log_path(path)
-    missing_tools: list[str] = []
+    missing_tools: set[str] = set()
 
     with open(log_path, "w", encoding="utf-8") as log_file:
-        _run_checks(path, log_file, missing_tools)
+        try:
+            _run_checks(path, log_file, missing_tools)
 
-        if missing_tools:
-            log_file.write(f"{FILE_SEPARATOR} MISSING TOOLS SUMMARY {FILE_SEPARATOR}\n")
-            for tool in sorted(set(missing_tools)):
-                log_file.write(f"  - {tool}\n")
-            log_file.write("\n")
+            if missing_tools:
+                log_file.write(f"{FILE_SEPARATOR} MISSING TOOLS SUMMARY {FILE_SEPARATOR}\n")
+                for tool in sorted(missing_tools):
+                    log_file.write(f"  - {tool}\n")
+                log_file.write("\n")
+        except KeyboardInterrupt:
+            log_file.write(f"\n{FILE_SEPARATOR} RUN INTERRUPTED {FILE_SEPARATOR}\n")
+            log_file.write("NOTE: Partial run — interrupted by user (KeyboardInterrupt).\n\n")
+            log_file.flush()
+            print(f"\nInterrupted. Partial report written to {log_path}")
+            sys.exit(130)
 
     print(f"Report written to {log_path}")
 

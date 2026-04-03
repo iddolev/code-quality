@@ -36,8 +36,9 @@ SMART_QUOTES = {
 }
 
 MAX_LINE_LENGTH = 120
-CODE_FENCE_PATTERN = r"^\s*(`{3,}|~{3,})"
-
+_CODE_FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})")
+_HEADING_RE = re.compile(r"^#{1,6}\s")
+_URL_RE = re.compile(r"https?://\S+")
 
 EXCLUDE_PATTERNS = [
     "sandbox/",
@@ -48,8 +49,11 @@ EXCLUDE_PATTERNS = [
 
 def _is_excluded(relative_path: str) -> bool:
     """Check if a relative path matches any exclusion pattern."""
-    prefixed = f"/{relative_path}"
-    return any(f"/{pattern}" in prefixed for pattern in EXCLUDE_PATTERNS)
+    parts = Path(relative_path).parts
+    return any(
+        part.rstrip("/") in parts
+        for part in EXCLUDE_PATTERNS
+    )
 
 
 def find_markdown_files(root: Path) -> list[Path]:
@@ -63,6 +67,36 @@ def find_markdown_files(root: Path) -> list[Path]:
 
 
 _SMART_QUOTE_TABLE = str.maketrans(SMART_QUOTES)
+_BULLETED_ITEM_RE = re.compile(r"^(\s*[-*+] )")
+_NUMBERED_ITEM_RE = re.compile(r"^(\s*\d+[.)]\s)")
+
+
+def _check_code_fence(line: str, current_fence: str | None) -> str | None:
+    """Track code fence state using matching markers.
+
+    Returns the updated fence marker: a non-None string when inside a fenced
+    block, or None when outside.  A closing fence must use the same character
+    (backtick or tilde) and be *at least* as long as the opening fence.
+    """
+    m = _CODE_FENCE_RE.match(line)
+    if not m:
+        return current_fence
+
+    marker = m.group(1)
+    fence_char = marker[0]
+    fence_len = len(marker)
+
+    if current_fence is None:
+        # Opening a new fenced block – remember the marker.
+        return marker
+    else:
+        # Only close if the character matches and length is >= the opener.
+        open_char = current_fence[0]
+        open_len = len(current_fence)
+        if fence_char == open_char and fence_len >= open_len:
+            return None
+        # Not a valid close – still inside the block.
+        return current_fence
 
 
 def fix_smart_quotes(text: str) -> str:
@@ -77,7 +111,7 @@ def _is_table_row(line: str) -> bool:
 
 def _is_url_line(line: str) -> bool:
     """True if the line is long only because it contains a URL."""
-    urls = re.findall(r"https?://\S+", line)
+    urls = _URL_RE.findall(line)
     if not urls:
         return False
     # If removing the longest URL brings the line under the limit, it's a URL line.
@@ -91,67 +125,87 @@ def _detect_indent(line: str) -> str:
     return line[:len(line) - len(line.lstrip())]
 
 
+def _match_list_item(line: str):
+    return _BULLETED_ITEM_RE.match(line) or _NUMBERED_ITEM_RE.match(line)
+
+
 def _is_list_item_start(line: str) -> bool:
     """True if this line starts a list item (numbered or bulleted)."""
-    return bool(re.match(r"^\s*[-*+] ", line) or re.match(r"^\s*\d+[.)]\s", line))
+    return bool(_match_list_item(line))
 
 
 def _list_continuation_indent(line: str) -> str:
     """Return the indent for continuation lines of a list item."""
-    match = re.match(r"^(\s*[-*+] )", line) or re.match(r"^(\s*\d+[.)]\s)", line)
+    match = _match_list_item(line)
     if match:
         return " " * len(match.group(1))
     return _detect_indent(line)
 
 
+def _should_skip_wrapping(line: str) -> bool:
+    """True if this line should not be wrapped (table row or URL line)."""
+    return _is_table_row(line) or _is_url_line(line)
+
+
+def _wrap_single_line(line: str) -> list[str]:
+    """Wrap a single long non-code line, returning a list of wrapped lines."""
+    if _is_list_item_start(line):
+        subsequent_indent = _list_continuation_indent(line)
+    else:
+        subsequent_indent = _detect_indent(line)
+
+    initial_indent = _detect_indent(line)
+
+    wrapped = textwrap.fill(
+        line,
+        width=MAX_LINE_LENGTH,
+        initial_indent=initial_indent,
+        subsequent_indent=subsequent_indent,
+        break_long_words=False,
+        break_on_hyphens=False,
+    )
+    return wrapped.split("\n")
+
+
 def wrap_long_lines(lines: list[str]) -> list[str]:
     """Rule 2: Wrap lines exceeding 120 characters."""
     result = []
-    in_code_fence = False
+    code_fence: str | None = None
     for line in lines:
-        if re.match(CODE_FENCE_PATTERN, line):
-            in_code_fence = not in_code_fence
-            result.append(line)
-            continue
+        code_fence = _check_code_fence(line, code_fence)
+        in_code = code_fence is not None and not _CODE_FENCE_RE.match(line)
 
-        if in_code_fence or len(line) <= MAX_LINE_LENGTH:
+        if _CODE_FENCE_RE.match(line) or in_code or len(line) <= MAX_LINE_LENGTH:
             result.append(line)
-            continue
-
-        # Exceptions: table rows, URL lines
-        if _is_table_row(line) or _is_url_line(line):
+        elif _should_skip_wrapping(line):
             result.append(line)
-            continue
-
-        # Determine indent for wrapped continuation lines
-        if _is_list_item_start(line):
-            subsequent_indent = _list_continuation_indent(line)
         else:
-            subsequent_indent = _detect_indent(line)
-
-        wrapped = textwrap.fill(
-            line,
-            width=MAX_LINE_LENGTH,
-            initial_indent="",
-            subsequent_indent=subsequent_indent,
-            break_long_words=False,
-            break_on_hyphens=False,
-        )
-        result.extend(wrapped.split("\n"))
+            result.extend(_wrap_single_line(line))
 
     return result
 
 
 def _is_heading(line: str) -> bool:
-    return bool(re.match(r"^#{1,6}\s", line))
+    return bool(_HEADING_RE.match(line))
 
 
 def _is_blank(line: str) -> bool:
-    return line.strip() == ""
+    return not line.strip()
 
 
 def _is_frontmatter_fence(line: str) -> bool:
     return line.strip() == "---"
+
+
+def _ensure_blank_line(result: list[str]) -> None:
+    if result and not _is_blank(result[-1]):
+        result.append("")
+
+
+def _collapse_trailing_blanks(result: list[str]) -> None:
+    """Collapse consecutive trailing blank lines in result down to exactly one."""
+    while len(result) >= 2 and _is_blank(result[-1]) and _is_blank(result[-2]):
+        result.pop()
 
 
 def _is_list_continuation(line: str, list_indent_depth: int) -> bool:
@@ -162,74 +216,67 @@ def _is_list_continuation(line: str, list_indent_depth: int) -> bool:
     return indent >= list_indent_depth
 
 
+def _skip_frontmatter(lines: list[str]) -> int:
+    """Return the index of the first line after YAML frontmatter, or 0."""
+    if lines and _is_frontmatter_fence(lines[0]):
+        for j in range(1, len(lines)):
+            if _is_frontmatter_fence(lines[j]):
+                return j + 1
+    return 0
+
+
+def _update_list_state(line: str, in_list: bool, list_indent_depth: int,
+                       result: list[str]) -> tuple[bool, int]:
+    """Handle list enter/exit logic, returning updated (in_list, list_indent_depth)."""
+    is_item = _is_list_item_start(line)
+    is_continuation = in_list and _is_list_continuation(line, list_indent_depth)
+
+    if is_item:
+        if not in_list:
+            if result and not _is_heading(result[-1]):
+                _ensure_blank_line(result)
+                _collapse_trailing_blanks(result)
+            in_list = True
+        list_indent_depth = len(_list_continuation_indent(line))
+    elif not is_continuation and not _is_blank(line):
+        if in_list:
+            _ensure_blank_line(result)
+            _collapse_trailing_blanks(result)
+            in_list = False
+
+    return in_list, list_indent_depth
+
+
 def fix_heading_and_list_spacing(lines: list[str]) -> list[str]:
     """Rules 3-5: Fix blank-line spacing around headings and lists."""
     if not lines:
         return lines
 
-    # Skip YAML frontmatter
-    start = 0
-    if lines and _is_frontmatter_fence(lines[0]):
-        for j in range(1, len(lines)):
-            if _is_frontmatter_fence(lines[j]):
-                start = j + 1
-                break
-
+    start = _skip_frontmatter(lines)
     result = list(lines[:start])
 
-    in_code_fence = False
+    code_fence: str | None = None
     in_list = False
     list_indent_depth = 0
 
     for i in range(start, len(lines)):
         line = lines[i]
 
-        if re.match(CODE_FENCE_PATTERN, line):
-            in_code_fence = not in_code_fence
+        code_fence = _check_code_fence(line, code_fence)
+        in_code = code_fence is not None and not _CODE_FENCE_RE.match(line)
+
+        if _CODE_FENCE_RE.match(line) or in_code:
             result.append(line)
             continue
 
-        if in_code_fence:
-            result.append(line)
-            continue
-
-        is_item = _is_list_item_start(line)
-        is_continuation = in_list and _is_list_continuation(line, list_indent_depth)
-
-        # Determine if we're entering, continuing, or leaving a list
-        if is_item:
-            if not in_list:
-                # Rule 4: blank line before the start of a new list
-                if result and not _is_blank(result[-1]) and not _is_heading(result[-1]):
-                    result.append("")
-                in_list = True
-            list_indent_depth = len(_list_continuation_indent(line))
-        elif is_continuation:
-            # still inside the list
-            pass
-        elif _is_blank(line):
-            # blank lines don't end a list by themselves
-            pass
-        else:
-            if in_list:
-                # Rule 5: blank line after the end of a list
-                if result and not _is_blank(result[-1]):
-                    result.append("")
-                in_list = False
-
-        # Rule 3: heading must be followed by exactly one blank line
-        if result and _is_heading(result[-1]):
-            if not _is_blank(line):
+        # Check heading-blank-line rule *before* list-state update mutates result
+        if result and _is_heading(result[-1]) and not _is_blank(line):
+            if not (result and _is_blank(result[-1])):
                 result.append("")
-            else:
-                trailing_blanks = 0
-                for prev_line in reversed(result):
-                    if _is_blank(prev_line):
-                        trailing_blanks += 1
-                    else:
-                        break
-                if trailing_blanks >= 1:
-                    continue
+                _collapse_trailing_blanks(result)
+
+        in_list, list_indent_depth = _update_list_state(
+            line, in_list, list_indent_depth, result)
 
         result.append(line)
 
@@ -240,10 +287,7 @@ def format_content(text: str) -> str:
     """Apply all formatting rules to markdown content."""
     text = fix_smart_quotes(text)
 
-    # Normalize line endings and split
-    text = text.replace("\r\n", "\n").replace("\r", "\n")
-    # Remove trailing whitespace on each line
-    lines = [line.rstrip() for line in text.split("\n")]
+    lines = [line.rstrip() for line in text.splitlines()]
 
     lines = wrap_long_lines(lines)
     lines = fix_heading_and_list_spacing(lines)
@@ -256,19 +300,23 @@ def format_content(text: str) -> str:
 
 
 def process_file(path: Path, is_dry_run: bool = False) -> bool:
-    """Process a single file. Returns True if changes were made."""
-    original = path.read_text(encoding="utf-8")
-    formatted = format_content(original)
+    """Returns True if the file needed changes."""
+    try:
+        original = path.read_text(encoding="utf-8")
+        formatted = format_content(original)
 
-    if formatted == original:
+        if formatted == original:
+            return False
+
+        if is_dry_run:
+            print(f"  WOULD FIX: {path}")
+        else:
+            path.write_text(formatted, encoding="utf-8")
+            print(f"  FIXED: {path}")
+        return True
+    except Exception as exc:
+        print(f"  WARNING: Could not process {path}: {exc}", file=sys.stderr)
         return False
-
-    if is_dry_run:
-        print(f"  WOULD FIX: {path}")
-    else:
-        path.write_text(formatted, encoding="utf-8")
-        print(f"  FIXED: {path}")
-    return True
 
 
 def _collect_files(path_args: list[str]) -> list[Path]:
@@ -282,15 +330,11 @@ def _collect_files(path_args: list[str]) -> list[Path]:
         if path.is_file():
             files.append(path.resolve())
         elif path.is_dir():
-            for md_file in sorted(path.rglob("*.md")):
-                relative_path = md_file.relative_to(REPO_ROOT).as_posix()
-                if not _is_excluded(relative_path):
-                    files.append(md_file.resolve())
+            files.extend(find_markdown_files(path))
     return files
 
 
 def _parse_args() -> argparse.Namespace:
-    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         description="Format markdown files according to project guidelines."
     )

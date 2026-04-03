@@ -1,4 +1,4 @@
-"""Run code quality tools on a Python file or folder."""
+"""Run existing static analysis tools on a Python file or folder."""
 
 import subprocess
 import sys
@@ -17,7 +17,7 @@ FILE_TOOLS = [
     ("pyright", REPLACE_PATH),
     ("radon", "cc", REPLACE_PATH, "-s", "-n", "C"),
     ("bandit", REPLACE_PATH),
-    ("vulture", REPLACE_PATH),
+    # ("vulture", REPLACE_PATH),  -- commented out because produced many false positives
     ("fixit", "lint", REPLACE_PATH),
 ]
 
@@ -27,7 +27,7 @@ FOLDER_TOOLS = [
     ("pip-audit",),
 ]
 
-TAG_ID = 'íd'
+TAG_ID = 'id'
 FILE_TAG = 'file'
 TOOL_TAG = 'tool'
 MISSING_TOOLS_TAG = "missing_tools_summary"
@@ -77,8 +77,11 @@ class QualityRunner:
 
     def _check_file(self, path: Path) -> None:
         """Run all file-level quality tools on a single Python file."""
+        print(f"Checking: {path}")
         for cmd_template in FILE_TOOLS:
+            print(f"{cmd_template[0]}... ", end="")
             self._run_tool(path, cmd_template)
+        print()
 
     @staticmethod
     def _collect_python_files(folder: Path) -> list[Path]:
@@ -139,7 +142,7 @@ class QualityRunner:
 def main() -> None:
     if len(sys.argv) < 3:
         print("Error: Missing arguments.")
-        print("Usage: python code_quality.py <file_or_folder> <output_filepath>")
+        print("Usage: python python_static_analysis_suite.py <file_or_folder> <output_filepath>")
         sys.exit(1)
 
     path = Path(sys.argv[1])

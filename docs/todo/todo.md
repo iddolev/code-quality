@@ -1,6 +1,21 @@
 # To do list
 
-# Do similar to apf: 
+## Do more with code instead of LLM
+
+While it's very convenient to write an English definition of a rule and ask LLM to apply it,
+that's very expensive (about $0.03 per call!).
+Also, LLMs are not deterministic and reliable.
+So it's good for a quick POC but then need to transition to python code as much as possible.
+
+Some of the rules can be implemented using python code quite easily,
+and some of them can be implemented on syntax trees of the code - need to look into it.
+
+## Code Quality Loop
+
+Also connect it to tests that run after each change to make sure it didn't break anything.
+Very heavy in time, but that's ok.
+
+## Do similar to apf: 
 
 Can install and re-install it in a similar way under code-quality/
 
