@@ -32,8 +32,10 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PROMPT_TEMPLATE_PATH = SCRIPT_DIR / "visual_flow_prompt.md"
 _PROMPT_TEMPLATE = PROMPT_TEMPLATE_PATH.read_text(encoding="utf-8")
 _CLIENT = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-_MODEL = "claude-sonnet-4-6"
-_REPETITIONS = 1
+_CONFIG = {
+    "model": "claude-sonnet-4-6",
+    "repetitions": 1,
+}
 
 VALID_SCOPES = {"local", "medium", "file"}
 
@@ -43,9 +45,6 @@ CODE_EXTENSIONS = {
     ".c", ".cpp", ".h", ".hpp", ".cs",
     ".swift", ".scala", ".sh", ".bash",
 }
-
-
-_RULES: list[dict] = []
 
 
 def parse_rules(guidelines_path: Path) -> list[dict]:
@@ -110,7 +109,7 @@ _SYSTEM_PROMPT = (
 def call_claude(prompt: str) -> str:
     """Send the prompt to Claude via the Anthropic API and return the response text."""
     message = _CLIENT.messages.create(
-        model=_MODEL,
+        model=_CONFIG["model"],
         max_tokens=4096,
         system=_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": prompt}],
@@ -169,7 +168,7 @@ def _approve_change(diff_text: str) -> bool:
     """Ask Claude whether the diff preserves semantics. Returns True if approved."""
     content = f"{_APPROVAL_PROMPT.strip()}\n\n```\n{diff_text}\n```"
     message = _CLIENT.messages.create(
-        model=_MODEL,
+        model=_CONFIG["model"],
         max_tokens=16,
         system=_APPROVAL_SYSTEM_PROMPT.strip(),
         messages=[{"role": "user", "content": content}],
@@ -309,14 +308,14 @@ def process_file(source_path: Path) -> Path:
     # LLM are not deterministic, and sometimes they don't find a rule violation on the first try
     # but only on the second try. So we try twice.
     # Also, after a change by one rule, a new opportunity to apply an earlier rule arises.
-    repetitions = _REPETITIONS
+    repetitions = _CONFIG["repetitions"]
     again = repetitions
     iteration = 0
     while again > 0:
         iteration += 1
         print(f"--- Starting iteration {iteration} ---")
         changed = False
-        for rule in _RULES:
+        for rule in _CONFIG["rules"]:
             while True:
                 new_code = _apply_rule(rule, current_code, log_path)
                 if new_code is None:
@@ -362,11 +361,10 @@ def _parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
-    global _MODEL, _REPETITIONS
     args = _parse_args()
     if args.full:
-        _MODEL = "claude-opus-4-6"
-        _REPETITIONS = 2
+        _CONFIG["model"] = "claude-opus-4-6"
+        _CONFIG["repetitions"] = 2
     if not args.guidelines.exists():
         print(f"Error: guidelines file not found: {args.guidelines}", file=sys.stderr)
         sys.exit(1)
@@ -377,9 +375,8 @@ def main() -> None:
     if not files:
         print(f"No code files found in: {args.source}", file=sys.stderr)
         sys.exit(1)
-    global _RULES
-    _RULES = parse_rules(args.guidelines)
-    if not _RULES:
+    _CONFIG["rules"] = parse_rules(args.guidelines)
+    if not _CONFIG["rules"]:
         print("No rules found in guidelines file.", file=sys.stderr)
         sys.exit(1)
     for file_path in files:

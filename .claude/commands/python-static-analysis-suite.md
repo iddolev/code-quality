@@ -45,6 +45,11 @@ Auto-fixable should be "Yes" on these issues, (and "No" otherwise)
 - Adding missing docstrings and comments
 - Method reordering within classes
 - Line split / formatting fixes, e.g.: C0301 (line-too-long)
+- C0103 (invalid-name)
+- C0411 (wrong-import-order)
+- W0611 (unused-import)
+- W0612 (unused-variable)
+- W1309 (f-string-without-interpolation)
 - Adding missing `else: raise NotImplementedError(...)` (simple cases only)
 
 ### 3. Auto-fixable changes
