@@ -1,11 +1,11 @@
-"""Tests for senior_se.py."""
+"""Tests for senior_se_triage.py."""
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 import json
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "code_quality_loop"))
-import senior_se
+import senior_se_triage
 
 
 ISSUE = {
@@ -32,19 +32,24 @@ def _make_fake_response(text: str) -> MagicMock:
     return resp
 
 
-def test_triage_implement_decision_has_only_decision_fields(tmp_path: Path) -> None:
-    issues_path = tmp_path / "sample.issues.json"
-    issues_path.write_text(json.dumps([ISSUE]), encoding="utf-8")
+def _write_issues(tmp_path: Path, stem: str = "sample") -> Path:
+    """Write issues file and return the source_path."""
+    source_path = tmp_path / f"{stem}.py"
+    issues_file = tmp_path / f"{stem}.issues.json"
+    issues_file.write_text(json.dumps([ISSUE]), encoding="utf-8")
+    return source_path
 
-    with patch("senior_se.anthropic.Anthropic") as mock_cls, \
-         patch("senior_se._consult_human") as mock_human:
-        mock_client = MagicMock()
-        mock_cls.return_value = mock_client
+
+def test_triage_implement_decision_has_only_decision_fields(tmp_path: Path) -> None:
+    source_path = _write_issues(tmp_path)
+
+    with patch("senior_se_triage.ANTHROPIC_CLIENT") as mock_client:
         mock_client.messages.create.return_value = _make_fake_response(
             json.dumps(TRIAGE_RESPONSE)
         )
-        decisions_path = senior_se.run(issues_path)
+        senior_se_triage.run(source_path)
 
+    decisions_path = tmp_path / "sample.decisions.json"
     decisions = json.loads(decisions_path.read_text())
     assert len(decisions) == 1
     record = decisions[0]
@@ -59,66 +64,53 @@ def test_triage_implement_decision_has_only_decision_fields(tmp_path: Path) -> N
     assert "severity" not in record
     assert "description" not in record
     assert "fix" not in record
-    mock_human.assert_not_called()
 
 
 def test_triage_no_sets_action_no(tmp_path: Path) -> None:
-    issues_path = tmp_path / "sample.issues.json"
-    issues_path.write_text(json.dumps([ISSUE]), encoding="utf-8")
+    source_path = _write_issues(tmp_path)
 
     triage_no = [{**TRIAGE_RESPONSE[0], "triage": "no",
                   "senior_se_reasoning": "Fix is unnecessary."}]
 
-    with patch("senior_se.anthropic.Anthropic") as mock_cls, \
-         patch("senior_se._consult_human"):
-        mock_client = MagicMock()
-        mock_cls.return_value = mock_client
+    with patch("senior_se_triage.ANTHROPIC_CLIENT") as mock_client:
         mock_client.messages.create.return_value = _make_fake_response(json.dumps(triage_no))
-        decisions_path = senior_se.run(issues_path)
+        senior_se_triage.run(source_path)
 
+    decisions_path = tmp_path / "sample.decisions.json"
     record = json.loads(decisions_path.read_text())[0]
     assert record["action"] == "no"
     assert record["decision_by"] == "senior_se"
     assert "fix" not in record
 
 
-def test_triage_needs_human_calls_consult(tmp_path: Path) -> None:
-    issues_path = tmp_path / "sample.issues.json"
-    issues_path.write_text(json.dumps([ISSUE]), encoding="utf-8")
+def test_triage_needs_human_sets_action(tmp_path: Path) -> None:
+    source_path = _write_issues(tmp_path)
 
     triage_human = [{**TRIAGE_RESPONSE[0], "triage": "needs_human_approval",
                      "senior_se_reasoning": "Trade-off unclear."}]
 
-    human_result = {"id": 1, "action": "skip_for_now", "decision_by": "human",
-                    "senior_se_reasoning": "Trade-off unclear.", "status": "pending"}
-
-    with patch("senior_se.anthropic.Anthropic") as mock_cls, \
-         patch("senior_se._consult_human", return_value=human_result) as mock_human:
-        mock_client = MagicMock()
-        mock_cls.return_value = mock_client
+    with patch("senior_se_triage.ANTHROPIC_CLIENT") as mock_client:
         mock_client.messages.create.return_value = _make_fake_response(
             json.dumps(triage_human)
         )
-        decisions_path = senior_se.run(issues_path)
+        senior_se_triage.run(source_path)
 
-    mock_human.assert_called_once()
+    decisions_path = tmp_path / "sample.decisions.json"
     record = json.loads(decisions_path.read_text())[0]
-    assert record["action"] == "skip_for_now"
-    assert record["decision_by"] == "human"
+    assert record["action"] == "needs_human_approval"
+    assert record["decision_by"] == "senior_se"
 
 
 def test_decisions_written_to_same_directory(tmp_path: Path) -> None:
-    issues_path = tmp_path / "mymodule.issues.json"
-    issues_path.write_text(json.dumps([ISSUE]), encoding="utf-8")
+    source_path = _write_issues(tmp_path, stem="mymodule")
 
-    with patch("senior_se.anthropic.Anthropic") as mock_cls, \
-         patch("senior_se._consult_human"):
-        mock_client = MagicMock()
-        mock_cls.return_value = mock_client
+    with patch("senior_se_triage.ANTHROPIC_CLIENT") as mock_client:
         mock_client.messages.create.return_value = _make_fake_response(
             json.dumps(TRIAGE_RESPONSE)
         )
-        decisions_path = senior_se.run(issues_path)
+        senior_se_triage.run(source_path)
 
+    decisions_path = tmp_path / "mymodule.decisions.json"
+    assert decisions_path.exists()
     assert decisions_path.parent == tmp_path
     assert decisions_path.name == "mymodule.decisions.json"
