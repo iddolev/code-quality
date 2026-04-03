@@ -44,6 +44,7 @@ Line {N}: [{CATEGORY}] {SEVERITY} — {description}
 List only the changes that are marked as "Auto-fixable: Yes" and that are SAFE to apply automatically:
 
 - Comment placement moves
+- Adding missing docstrings and comments
 - Method reordering within classes
 - Line split / formatting fixes
 - Adding missing `else: raise NotImplementedError(...)` (simple cases only)
@@ -71,3 +72,12 @@ do a final pass on the log file, and remove from it:
    that the change to the code doesn't change anything semantically. 
    Without such testing we cannot be sure the change is correct.
    Especially for complex changes]
+
+## CRITICAL SAFETY RULE
+
+CRITICAL: The guidelines instruct about cosmetic/structural changes only! 
+You MUST ALWAYS preserve the exact semantic behavior of the original code. 
+If a modification requires changing logic, control flow, 
+return values, side effects, error handling behavior, or API contracts - 
+don't actually do it but instead list it as a SUGGESTION and not as an auto-fix.
+When in doubt, leave the code unchanged, and ask the user.
