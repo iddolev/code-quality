@@ -21,6 +21,8 @@ _MODEL = "claude-opus-4-6"
 
 
 class CodeCritic:
+    """Evaluates source code and produces a list of quality issues."""
+
     def __init__(self, source_path: Path):
         self.source_path = source_path
         self.ip = issues_path(source_path)

@@ -20,9 +20,9 @@ import subprocess
 import sys
 import tempfile
 
-import anthropic
-import yaml
 from pathlib import Path
+
+import anthropic
 
 from dotenv import load_dotenv
 
@@ -75,7 +75,10 @@ def parse_rules(guidelines_path: Path) -> list[dict]:
         body = body.strip()
         scope = scope_match.group(1).strip().lower()
         if scope not in VALID_SCOPES:
-            print(f"Warning: rule {rule_id} has unknown scope '{scope}', skipping.", file=sys.stderr)
+            print(
+                f"Warning: rule {rule_id} has unknown scope '{scope}', skipping.",
+                file=sys.stderr,
+            )
             continue
 
         rules.append({
@@ -124,7 +127,11 @@ def _extract_json_object(text: str) -> str | None:
     if start_pos < 0:
         start_pos = text.find('{\n"rule":')
         if start_pos < 0:
-            print("Warning: no JSON object starting with '{\"rule\":\"' found in response.", file=sys.stderr)
+            print(
+                "Warning: no JSON object starting with "
+                "'{\"rule\":\"' found in response.",
+                file=sys.stderr,
+            )
             return None
     if text.endswith('}'):
         # Assume the JSON string goes till the end of the text
@@ -185,7 +192,7 @@ def _fix_hunk_headers(diff_text: str) -> str:
     old_count = 0
     new_count = 0
 
-    for i, line in enumerate(lines):
+    for _i, line in enumerate(lines):
         if line.startswith("@@"):
             if hunk_start is not None:
                 result[hunk_start] = _build_hunk_header(result[hunk_start], old_count, new_count)
@@ -271,19 +278,22 @@ def compute_log_path(source_path: Path) -> Path:
 
 
 def _apply_rule(rule: dict, current_code: str, log_path: Path) -> str | None:
-    """Check a single rule against the code and apply the fix if needed. Returns the (possibly updated) code."""
+    """Check a single rule against the code and apply the fix if needed.
+
+    Returns the (possibly updated) code.
+    """
     print(f"Checking rule {rule['id']}: {rule['title']} (scope: {rule['scope']})...")
     prompt = build_prompt(rule, current_code)
     response_text = call_claude(prompt)
     result = parse_claude_response(response_text)
 
     if result is None:
-        print(f"  No violation found.")
+        print("  No violation found.")
         return None
 
     new_text = result.get("new", "")
     if not new_text:
-        print(f"  Violation found but new version was not provided.", file=sys.stderr)
+        print("  Violation found but new version was not provided.", file=sys.stderr)
         return current_code
 
     log_fix(log_path, rule, result)
@@ -338,7 +348,10 @@ def process_file(source_path: Path) -> Path:
 
 
 def _collect_files(source: Path) -> list[Path]:
-    """Collect code files from a path. If a file, return it; if a directory, recurse for code files."""
+    """Collect code files from a path.
+
+    If a file, return it; if a directory, recurse for code files.
+    """
     if source.is_file():
         return [source]
     if source.is_dir():

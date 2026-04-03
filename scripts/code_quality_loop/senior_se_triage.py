@@ -26,6 +26,8 @@ _TRIAGE_TO_ACTION = {
 
 
 class SeniorSETriage:
+    """Triages code quality issues by severity and assigns action decisions."""
+
     def __init__(self, source_path: Path):
         self.source_path = source_path
         self.ip = issues_path(source_path)

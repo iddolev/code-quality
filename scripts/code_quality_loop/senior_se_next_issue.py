@@ -23,6 +23,8 @@ _MODEL = "claude-opus-4-6"
 
 
 class NextRunner:
+    """Selects and processes the next code quality issue to address."""
+
     def __init__(self, source_path: Path):
         self.source_path = source_path
         self.ip = issues_path(source_path)

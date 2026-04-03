@@ -23,6 +23,8 @@ _ACTIONABLE = {"implement", "custom"}
 
 
 class Rewriter:
+    """Rewrites source code to fix a specific issue identified by the critic."""
+
     def __init__(self, source_path: Path, issue_id: int):
         self.source_path = source_path
         self.issue_id = issue_id
