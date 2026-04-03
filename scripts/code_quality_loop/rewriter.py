@@ -14,9 +14,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-import anthropic
-
-from common import decisions_path, issues_path, load_prompt, now_utc, strip_markdown_fence
+from common import decisions_path, issues_path, load_prompt, now_utc, strip_markdown_fence, \
+    ANTHROPIC_CLIENT
 
 _MODEL = "claude-opus-4-6"
 _ACTIONABLE = {"implement", "custom"}
@@ -33,7 +32,6 @@ class Rewriter:
         self.decisions: list[dict[str, Any]] = json.loads(self.dp.read_text(encoding="utf-8"))
         issues: list[dict[str, Any]] = json.loads(self.ip.read_text(encoding="utf-8"))
         self.issues_by_id = {issue["id"]: issue for issue in issues}
-        self.client = anthropic.Anthropic()
 
     def run(self) -> None:
         decision = self._find_decision()
@@ -68,7 +66,7 @@ class Rewriter:
     def _apply_fix(self, source_code: str, fix_instruction: str) -> str:
         system_prompt = load_prompt("rewriter_prompt.md")
         user_content = f"{source_code}\n\n---FIX---\n{fix_instruction}"
-        response = self.client.messages.create(
+        response = ANTHROPIC_CLIENT.messages.create(
             model=_MODEL,
             max_tokens=8192,
             system=system_prompt,

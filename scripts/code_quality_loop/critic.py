@@ -13,9 +13,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-import anthropic
+from common import decisions_path, issues_path, load_prompt, now_utc, strip_markdown_fence, \
+    ANTHROPIC_CLIENT
 
-from common import decisions_path, issues_path, load_prompt, now_utc, strip_markdown_fence
 
 _MODEL = "claude-opus-4-6"
 
@@ -31,13 +31,12 @@ class CodeCritic:
             json.loads(self.ip.read_text(encoding="utf-8")) if self.ip.exists() else []
         )
         self.next_id = max((issue["id"] for issue in self.existing_issues), default=0) + 1
-        self.client = anthropic.Anthropic()
 
     def run(self) -> None:
         known_unresolved = self._known_unresolved_issues()
         user_message = self._build_user_message(known_unresolved)
 
-        print(f"Code critic: reviewing {self.source_path.name} ...")
+        print(f"Code critic: reviewing {self.source_path} ...")
         new_issues = self._review(user_message)
         print(f"Code critic: found {len(new_issues)} new issue(s), "
               f"{len(known_unresolved)} already known.")
@@ -68,7 +67,7 @@ class CodeCritic:
 
     def _review(self, user_message: str) -> list[dict[str, Any]]:
         system_prompt = load_prompt("critic_prompt.md")
-        response = self.client.messages.create(
+        response = ANTHROPIC_CLIENT.messages.create(
             model=_MODEL,
             max_tokens=4096,
             system=system_prompt,
