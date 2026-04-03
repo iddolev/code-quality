@@ -90,15 +90,6 @@ def parse_rules(guidelines_path: Path) -> list[dict]:
 
 def build_prompt(rule: dict, code: str) -> str:
     """Build the full prompt for Claude by combining template, scope section, rule, and code."""
-    # parts = prompt_template.split("@@@")
-    # before = parts[0].rstrip()
-    # after_marker = parts[1] if len(parts) > 1 else ""  # TODO: print error to stderr if no @@@
-    #
-    # more_parts = after_marker.split("---", 1)
-    # middle = more_parts[0].strip()
-    # scope_block = _extract_scope_block(after_marker, rule["scope"])
-    #
-    # prompt = f"{before}\n\n{scope_block}\n\n{middle}"
 
     prompt_template = _PROMPT_TEMPLATE.replace("#<N>", f"#<{rule['id']}>")
     return (
@@ -108,19 +99,6 @@ def build_prompt(rule: dict, code: str) -> str:
         f"---\n\n"
         f"## Code:\n\n```\n{code}\n```"
     )
-
-
-def _extract_scope_block(scope_sections: str, scope_key: str) -> str:
-    """Extract the text for a given scope key from the YAML section after '---'."""
-    parts = scope_sections.split("---", 1)
-    if len(parts) < 2:
-        print("Warning: no '---' separator found in scope sections.", file=sys.stderr)
-        return ""
-    scope_map = yaml.safe_load(parts[1])
-    if not isinstance(scope_map, dict) or scope_key not in scope_map:
-        print(f"Warning: scope '{scope_key}' not found in YAML scope definitions.", file=sys.stderr)
-        return ""
-    return scope_map[scope_key].strip()
 
 
 _SYSTEM_PROMPT = (
@@ -293,8 +271,7 @@ def compute_log_path(source_path: Path) -> Path:
     return Path("/temp") / f"{relative}.vf.jsonl"
 
 
-def _apply_rule(rule: dict, current_code: str,
-                source_path: Path, log_path: Path) -> str | None:
+def _apply_rule(rule: dict, current_code: str, log_path: Path) -> str | None:
     """Check a single rule against the code and apply the fix if needed. Returns the (possibly updated) code."""
     print(f"Checking rule {rule['id']}: {rule['title']} (scope: {rule['scope']})...")
     prompt = build_prompt(rule, current_code)
@@ -309,15 +286,6 @@ def _apply_rule(rule: dict, current_code: str,
     if not new_text:
         print(f"  Violation found but new version was not provided.", file=sys.stderr)
         return current_code
-
-    # if not _approve_change(diff_text):
-    #     print(f"  Change was not approved")
-    #     return current_code
-
-    # patched = apply_patch(current_code, diff_text, source_path)
-    # if patched is None:
-    #     print(f"  Could not apply patch for rule {rule['id']}.", file=sys.stderr)
-    #     return current_code
 
     log_fix(log_path, rule, result)
     print(f"  Fixed: {result.get('description', '(no description)')}")
@@ -350,7 +318,7 @@ def process_file(source_path: Path) -> Path:
         changed = False
         for rule in _RULES:
             while True:
-                new_code = _apply_rule(rule, current_code, source_path, log_path)
+                new_code = _apply_rule(rule, current_code, log_path)
                 if new_code is None:
                     break
                 changed = any_change = True

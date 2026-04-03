@@ -36,18 +36,20 @@ Line {N}: [{CATEGORY}] {SEVERITY} — {description}
   Suggested: {what it should look like}
   Tool: {which tool this comes from} 
   Rule: {which tool guideline this comes from}
-  Auto-fixable: Yes/No
+  Auto-fixable: Yes/No -- see instructions below
 ```
 
-### 3. Auto-fixable changes
-
-List only the changes that are marked as "Auto-fixable: Yes" and that are SAFE to apply automatically:
+Auto-fixable should be "Yes" on these issues, (and "No" otherwise)
 
 - Comment placement moves
 - Adding missing docstrings and comments
 - Method reordering within classes
-- Line split / formatting fixes
+- Line split / formatting fixes, e.g.: C0301 (line-too-long)
 - Adding missing `else: raise NotImplementedError(...)` (simple cases only)
+
+### 3. Auto-fixable changes
+
+List only the changes that are marked as "Auto-fixable: Yes".
 
 ### 4. Manual approval changes
 
@@ -61,6 +63,10 @@ do a final pass on the log file, and remove from it:
 - Any item that has PEP 257 / D102 on a private function
 - Any item of PEP 257 / D103 on the `main()` function.
 - Any item of PEP 257 / D401 on a boolean function.
+- Any item of pylint R0903 (too-few-public-methods)        (produces too many false positives)
+- Any item of pylint C0116 (missing-function-docstring)    (produces too many false positives)
+- Any item of pylint R0902 (too-many-instance-attributes)  (produces too many false positives)
+- Any item of pyright [TYPE SAFETY] "Error — Cannot access attribute "text" on non-TextBlock content types"  (because the intended behavior is raising exception when returned content is not a TextBlock)
 
 ## Do the fixes
 

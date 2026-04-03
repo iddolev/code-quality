@@ -17,7 +17,7 @@ FILE_TOOLS = [
     ("pyright", REPLACE_PATH),
     ("radon", "cc", REPLACE_PATH, "-s", "-n", "C"),
     ("bandit", REPLACE_PATH),
-    ("vulture", REPLACE_PATH),
+    # ("vulture", REPLACE_PATH),  -- commented out because produced many false positives
     ("fixit", "lint", REPLACE_PATH),
 ]
 
