@@ -2,8 +2,18 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
+
+import anthropic
+
+from dotenv import load_dotenv
+
+
+load_dotenv(Path(__file__).parent.parent.parent / ".env")
+
+ANTHROPIC_CLIENT = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
 _PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 
