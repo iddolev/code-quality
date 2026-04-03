@@ -19,6 +19,7 @@ from common import decisions_path, issues_path, load_prompt, log_append, now_utc
 
 _MODEL = "claude-opus-4-6"
 _ACTIONABLE = {"implement", "custom"}
+_GUIDELINES_DIR = Path(__file__).resolve().parent.parent.parent / "guidelines"
 
 
 class Rewriter:
@@ -32,6 +33,7 @@ class Rewriter:
         self.decisions: list[dict[str, Any]] = json.loads(self.dp.read_text(encoding="utf-8"))
         issues: list[dict[str, Any]] = json.loads(self.ip.read_text(encoding="utf-8"))
         self.issues_by_id = {issue["id"]: issue for issue in issues}
+        self.system_prompt = self._build_system_prompt()
 
     def run(self) -> None:
         decision = self._find_decision()
@@ -70,13 +72,22 @@ class Rewriter:
             "fix_instruction": fix_instruction,
         })
 
+    @staticmethod
+    def _build_system_prompt() -> str:
+        prompt = load_prompt("rewriter_prompt.md")
+        parts = []
+        for path in sorted(_GUIDELINES_DIR.glob("*_lean.md")):
+            parts.append(path.read_text(encoding="utf-8"))
+        if parts:
+            prompt += "\n\n## Code Style Guidelines\n\n" + "\n\n".join(parts)
+        return prompt
+
     def _apply_fix(self, source_code: str, fix_instruction: str) -> str:
-        system_prompt = load_prompt("rewriter_prompt.md")
         user_content = f"{source_code}\n\n---FIX---\n{fix_instruction}"
         response = ANTHROPIC_CLIENT.messages.create(
             model=_MODEL,
             max_tokens=8192,
-            system=system_prompt,
+            system=self.system_prompt,
             messages=[{"role": "user", "content": user_content}],
         )
         return strip_markdown_fence(response.content[0].text)
