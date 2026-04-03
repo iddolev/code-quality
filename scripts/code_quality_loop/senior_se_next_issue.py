@@ -15,9 +15,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-import anthropic
-
-from common import decisions_path, issues_path, load_prompt, log_append, now_utc
+from common import decisions_path, issues_path, load_prompt, log_append, now_utc, \
+    ANTHROPIC_CLIENT
 
 _MODEL = "claude-opus-4-6"
 
@@ -33,7 +32,6 @@ class NextRunner:
         self.decisions: list[dict[str, Any]] = json.loads(self.dp.read_text(encoding="utf-8"))
         self.issues_by_id = {issue["id"]: issue for issue in self.issues}
         self.source_code = source_path.read_text(encoding="utf-8")
-        self.client = anthropic.Anthropic()
 
     def run(self) -> None:
         actionable = [d for d in self.decisions
@@ -50,7 +48,7 @@ class NextRunner:
         """Check relevance and emit NEXT if applicable. Returns True if NEXT was emitted."""
         issue = self.issues_by_id[decision["id"]]
         self._log_relevance_check(issue)
-        verdict, extra = self._check_relevance(self.source_code, issue, self.client)
+        verdict, extra = self._check_relevance(issue)
         if verdict == "applicable":
             print(f"NEXT {json.dumps(issue)}")
             return True
@@ -107,10 +105,7 @@ class NextRunner:
             "verdict": verdict,
         })
 
-    @staticmethod
-    def _check_relevance(source_code: str,
-                         issue: dict[str, Any],
-                         client: anthropic.Anthropic) -> tuple[str, str]:
+    def _check_relevance(self, issue: dict[str, Any]) -> tuple[str, str]:
         """Return (verdict, extra). verdict is one of:
           applicable         — issue still exists, fix can be applied as-is
           needs_update       — issue still exists but description/location have shifted;
@@ -119,11 +114,12 @@ class NextRunner:
           no_longer_relevant — issue already resolved by a prior fix
         """
         system_prompt = load_prompt("relevance_check_prompt.md")
-        user_content = f"{source_code}\n\n---ISSUE---\n{json.dumps(issue, indent=2)}"
-        response = client.messages.create(model=_MODEL,
-                                          max_tokens=512,
-                                          system=system_prompt,
-                                          messages=[{"role": "user", "content": user_content}])
+        user_content = f"{self.source_code}\n\n---ISSUE---\n{json.dumps(issue, indent=2)}"
+        response = ANTHROPIC_CLIENT.messages.create(
+            model=_MODEL,
+            max_tokens=512,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_content}])
         raw = response.content[0].text.strip()
         first_line = raw.splitlines()[0].strip().lower()
         extra = "\n".join(raw.splitlines()[1:]).strip()
