@@ -76,7 +76,9 @@ class CodeCritic:
         return source_code
 
     def _review(self, user_message: str) -> list[dict[str, Any]]:
-        system_prompt = load_prompt("critic_prompt.md")
+        system_prompt = load_prompt("critic_prompt.md").replace(
+            "{{ISSUE_TYPES}}", load_prompt("issue_types.md"),
+        )
         response = ANTHROPIC_CLIENT.messages.create(
             model=_MODEL,
             max_tokens=4096,
