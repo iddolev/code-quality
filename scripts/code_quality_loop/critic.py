@@ -13,8 +13,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from common import decisions_path, issues_path, load_prompt, now_utc, strip_markdown_fence, \
-    ANTHROPIC_CLIENT
+from common import decisions_path, issues_path, load_prompt, log_append, now_utc, \
+    strip_markdown_fence, ANTHROPIC_CLIENT
 
 
 _MODEL = "claude-opus-4-6"
@@ -40,6 +40,16 @@ class CodeCritic:
         new_issues = self._review(user_message)
         print(f"Code critic: found {len(new_issues)} new issue(s), "
               f"{len(known_unresolved)} already known.")
+
+        log_append(self.source_path, {
+            "event": "critic_complete",
+            "new_issues": [
+                {"id": issue["id"], "fingerprint": issue["fingerprint"],
+                 "severity": issue["severity"], "location": issue["location"]}
+                for issue in new_issues
+            ],
+            "known_unresolved_count": len(known_unresolved),
+        })
 
         self.ip.write_text(
             json.dumps(self.existing_issues + new_issues, indent=2), encoding="utf-8"

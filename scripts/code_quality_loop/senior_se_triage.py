@@ -13,8 +13,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from common import decisions_path, issues_path, load_prompt, now_utc, strip_markdown_fence, \
-    ANTHROPIC_CLIENT
+from common import decisions_path, issues_path, load_prompt, log_append, now_utc, \
+    strip_markdown_fence, ANTHROPIC_CLIENT
 
 _MODEL = "claude-opus-4-6"
 
@@ -51,6 +51,12 @@ class SeniorSETriage:
             if d["action"] == "skip_for_now":
                 d["action"] = "skipped_re_ask"
                 d["last_updated"] = now_utc()
+                log_append(self.source_path, {
+                    "event": "triage_age_skip",
+                    "id": d["id"],
+                    "old_action": "skip_for_now",
+                    "new_action": "skipped_re_ask",
+                })
                 aged += 1
         if aged:
             self._save_decisions()
@@ -87,6 +93,14 @@ class SeniorSETriage:
             record = self._make_decision_record(issue, triage_by_id[issue["id"]])
             self.decisions.append(record)
             self._save_decisions()
+            log_append(self.source_path, {
+                "event": "triage_decision",
+                "id": issue["id"],
+                "fingerprint": issue["fingerprint"],
+                "severity": issue["severity"],
+                "action": record["action"],
+                "reasoning": record["senior_se_reasoning"],
+            })
             if record["action"] == "implement":
                 auto_implement += 1
             elif record["action"] == "no":

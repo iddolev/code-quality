@@ -49,8 +49,11 @@ EXCLUDE_PATTERNS = [
 
 def _is_excluded(relative_path: str) -> bool:
     """Check if a relative path matches any exclusion pattern."""
-    prefixed = f"/{relative_path}"
-    return any(f"/{pattern}" in prefixed for pattern in EXCLUDE_PATTERNS)
+    parts = Path(relative_path).parts
+    return any(
+        part.rstrip("/") in parts
+        for part in EXCLUDE_PATTERNS
+    )
 
 
 def find_markdown_files(root: Path) -> list[Path]:
@@ -66,6 +69,34 @@ def find_markdown_files(root: Path) -> list[Path]:
 _SMART_QUOTE_TABLE = str.maketrans(SMART_QUOTES)
 _BULLETED_ITEM_RE = re.compile(r"^(\s*[-*+] )")
 _NUMBERED_ITEM_RE = re.compile(r"^(\s*\d+[.)]\s)")
+
+
+def _check_code_fence(line: str, current_fence: str | None) -> str | None:
+    """Track code fence state using matching markers.
+
+    Returns the updated fence marker: a non-None string when inside a fenced
+    block, or None when outside.  A closing fence must use the same character
+    (backtick or tilde) and be *at least* as long as the opening fence.
+    """
+    m = _CODE_FENCE_RE.match(line)
+    if not m:
+        return current_fence
+
+    marker = m.group(1)
+    fence_char = marker[0]
+    fence_len = len(marker)
+
+    if current_fence is None:
+        # Opening a new fenced block – remember the marker.
+        return marker
+    else:
+        # Only close if the character matches and length is >= the opener.
+        open_char = current_fence[0]
+        open_len = len(current_fence)
+        if fence_char == open_char and fence_len >= open_len:
+            return None
+        # Not a valid close – still inside the block.
+        return current_fence
 
 
 def fix_smart_quotes(text: str) -> str:
@@ -123,10 +154,12 @@ def _wrap_single_line(line: str) -> list[str]:
     else:
         subsequent_indent = _detect_indent(line)
 
+    initial_indent = _detect_indent(line)
+
     wrapped = textwrap.fill(
         line,
         width=MAX_LINE_LENGTH,
-        initial_indent="",
+        initial_indent=initial_indent,
         subsequent_indent=subsequent_indent,
         break_long_words=False,
         break_on_hyphens=False,
@@ -137,12 +170,12 @@ def _wrap_single_line(line: str) -> list[str]:
 def wrap_long_lines(lines: list[str]) -> list[str]:
     """Rule 2: Wrap lines exceeding 120 characters."""
     result = []
-    in_code_fence = False
+    code_fence: str | None = None
     for line in lines:
-        if _CODE_FENCE_RE.match(line):
-            in_code_fence = not in_code_fence
-            result.append(line)
-        elif in_code_fence or len(line) <= MAX_LINE_LENGTH:
+        code_fence = _check_code_fence(line, code_fence)
+        in_code = code_fence is not None and not _CODE_FENCE_RE.match(line)
+
+        if _CODE_FENCE_RE.match(line) or in_code or len(line) <= MAX_LINE_LENGTH:
             result.append(line)
         elif _should_skip_wrapping(line):
             result.append(line)
@@ -167,6 +200,12 @@ def _is_frontmatter_fence(line: str) -> bool:
 def _ensure_blank_line(result: list[str]) -> None:
     if result and not _is_blank(result[-1]):
         result.append("")
+
+
+def _collapse_trailing_blanks(result: list[str]) -> None:
+    """Collapse consecutive trailing blank lines in result down to exactly one."""
+    while len(result) >= 2 and _is_blank(result[-1]) and _is_blank(result[-2]):
+        result.pop()
 
 
 def _is_list_continuation(line: str, list_indent_depth: int) -> bool:
@@ -196,11 +235,13 @@ def _update_list_state(line: str, in_list: bool, list_indent_depth: int,
         if not in_list:
             if result and not _is_heading(result[-1]):
                 _ensure_blank_line(result)
+                _collapse_trailing_blanks(result)
             in_list = True
         list_indent_depth = len(_list_continuation_indent(line))
     elif not is_continuation and not _is_blank(line):
         if in_list:
             _ensure_blank_line(result)
+            _collapse_trailing_blanks(result)
             in_list = False
 
     return in_list, list_indent_depth
@@ -214,27 +255,28 @@ def fix_heading_and_list_spacing(lines: list[str]) -> list[str]:
     start = _skip_frontmatter(lines)
     result = list(lines[:start])
 
-    in_code_fence = False
+    code_fence: str | None = None
     in_list = False
     list_indent_depth = 0
 
     for i in range(start, len(lines)):
         line = lines[i]
 
-        if _CODE_FENCE_RE.match(line):
-            in_code_fence = not in_code_fence
+        code_fence = _check_code_fence(line, code_fence)
+        in_code = code_fence is not None and not _CODE_FENCE_RE.match(line)
+
+        if _CODE_FENCE_RE.match(line) or in_code:
             result.append(line)
             continue
 
-        if in_code_fence:
-            result.append(line)
-            continue
+        # Check heading-blank-line rule *before* list-state update mutates result
+        if result and _is_heading(result[-1]) and not _is_blank(line):
+            if not (result and _is_blank(result[-1])):
+                result.append("")
+                _collapse_trailing_blanks(result)
 
         in_list, list_indent_depth = _update_list_state(
             line, in_list, list_indent_depth, result)
-
-        if result and _is_heading(result[-1]) and not _is_blank(line):
-            result.append("")
 
         result.append(line)
 
@@ -259,18 +301,22 @@ def format_content(text: str) -> str:
 
 def process_file(path: Path, is_dry_run: bool = False) -> bool:
     """Returns True if the file needed changes."""
-    original = path.read_text(encoding="utf-8")
-    formatted = format_content(original)
+    try:
+        original = path.read_text(encoding="utf-8")
+        formatted = format_content(original)
 
-    if formatted == original:
+        if formatted == original:
+            return False
+
+        if is_dry_run:
+            print(f"  WOULD FIX: {path}")
+        else:
+            path.write_text(formatted, encoding="utf-8")
+            print(f"  FIXED: {path}")
+        return True
+    except Exception as exc:
+        print(f"  WARNING: Could not process {path}: {exc}", file=sys.stderr)
         return False
-
-    if is_dry_run:
-        print(f"  WOULD FIX: {path}")
-    else:
-        path.write_text(formatted, encoding="utf-8")
-        print(f"  FIXED: {path}")
-    return True
 
 
 def _collect_files(path_args: list[str]) -> list[Path]:

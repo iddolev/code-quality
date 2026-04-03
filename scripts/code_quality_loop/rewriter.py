@@ -14,8 +14,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from common import decisions_path, issues_path, load_prompt, now_utc, strip_markdown_fence, \
-    ANTHROPIC_CLIENT
+from common import decisions_path, issues_path, load_prompt, log_append, now_utc, \
+    strip_markdown_fence, ANTHROPIC_CLIENT
 
 _MODEL = "claude-opus-4-6"
 _ACTIONABLE = {"implement", "custom"}
@@ -62,6 +62,13 @@ class Rewriter:
         decision["status"] = "done"
         decision["last_updated"] = now_utc()
         self.dp.write_text(json.dumps(self.decisions, indent=2), encoding="utf-8")
+        issue = self.issues_by_id[self.issue_id]
+        log_append(self.source_path, {
+            "event": "rewrite_applied",
+            "id": self.issue_id,
+            "fingerprint": issue["fingerprint"],
+            "fix_instruction": fix_instruction,
+        })
 
     def _apply_fix(self, source_code: str, fix_instruction: str) -> str:
         system_prompt = load_prompt("rewriter_prompt.md")

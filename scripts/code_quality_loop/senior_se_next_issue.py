@@ -47,8 +47,13 @@ class NextRunner:
     def _process_decision(self, decision: dict[str, Any]) -> bool:
         """Check relevance and emit NEXT if applicable. Returns True if NEXT was emitted."""
         issue = self.issues_by_id[decision["id"]]
-        self._log_relevance_check(issue)
         verdict, extra = self._check_relevance(issue)
+        log_append(self.source_path, {
+            "event": "relevance_check",
+            "id": issue["id"],
+            "fingerprint": issue["fingerprint"],
+            "verdict": verdict,
+        })
         if verdict == "applicable":
             print(f"NEXT {json.dumps(issue)}")
             return True
@@ -60,12 +65,6 @@ class NextRunner:
             return True
         self._mark_skipped(decision, issue, verdict)
         return False
-
-    def _log_relevance_check(self, issue: dict[str, Any]) -> None:
-        log_append(self.source_path, {
-            "event": "relevance_check",
-            "fingerprint": issue["fingerprint"],
-        })
 
     def _handle_needs_update(self, issue: dict[str, Any], extra: str) -> bool:
         updates = self._parse_needs_update(extra)
