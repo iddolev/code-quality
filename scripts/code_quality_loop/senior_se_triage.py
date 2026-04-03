@@ -13,9 +13,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-import anthropic
-
-from common import decisions_path, issues_path, load_prompt, now_utc, strip_markdown_fence
+from common import decisions_path, issues_path, load_prompt, now_utc, strip_markdown_fence, \
+    ANTHROPIC_CLIENT
 
 _MODEL = "claude-opus-4-6"
 
@@ -36,7 +35,6 @@ class SeniorSETriage:
         self.decisions: list[dict[str, Any]] = (
             json.loads(self.dp.read_text(encoding="utf-8")) if self.dp.exists() else []
         )
-        self.client = anthropic.Anthropic()
 
     def run(self) -> None:
         self._age_skip_decisions()
@@ -72,7 +70,7 @@ class SeniorSETriage:
 
     def _triage_issues(self, issues: list[dict[str, Any]]) -> list[dict[str, Any]]:
         system_prompt = load_prompt("senior_se_triage_prompt.md")
-        response = self.client.messages.create(
+        response = ANTHROPIC_CLIENT.messages.create(
             model=_MODEL,
             max_tokens=4096,
             system=system_prompt,
