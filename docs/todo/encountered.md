@@ -16,3 +16,4 @@ Guidelines that were not upheld in code produced by LLMs
 6. regex
    - sometimes string instead of compiling
    - sometimes re.compile done inside a function instead of once at module level
+7. naming variables with one letter or too short (e.g. itype instead of issue_type)

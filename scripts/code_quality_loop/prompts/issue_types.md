@@ -10,7 +10,7 @@ unusual but valid inputs, or other non-mainstream scenarios.
 
 ## correctness
 
-Correctness bugs other than edge cases. Wrong logic, wrong ordering of
+Correctness bugs *other than edge cases*. Wrong logic, wrong ordering of
 operations, incorrect algorithm, wrong return value, or any defect that
 produces incorrect results on normal, expected inputs.
 
@@ -87,6 +87,13 @@ out useful signals, or missing metrics on critical operations.
 Type-safety issues. Implicit None returns used as valid values, unchecked
 Optional access, wrong type assumptions, isinstance checks that miss
 subtypes, or dynamic attribute access without guards.
+
+## testing
+
+Test quality issues. Brittle assertions that check implementation details
+instead of behavior, mocks so broad they mask real bugs, missing tests for
+critical error paths, flaky tests that rely on timing or ordering, or test
+data that contains real PII.
 
 ## other
 

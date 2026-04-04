@@ -1,0 +1,184 @@
+edge-case:
+  CRITICAL:
+    - "Unbounded recursion when input contains circular references"
+    - "Index out of range crash on empty input list"
+  HIGH:
+    - "No handling of negative values in amount calculation"
+    - "Fails on Unicode surrogate pairs in string processing"
+  MEDIUM:
+    - "Does not handle trailing slash in URL normalization"
+    - "Assumes dict keys are always strings"
+  LOW:
+    - "No special message for single-item lists in formatting"
+
+correctness:
+  CRITICAL:
+    - "Off-by-one in loop causes last element to be skipped"
+    - "Comparison uses = instead of == in conditional"
+    - "Wrong variable returned from function"
+  HIGH:
+    - "Integer overflow possible in sum accumulation"
+    - "Boolean logic inverted in access check"
+  MEDIUM:
+    - "Sort key does not match documented ordering"
+  LOW:
+    - "Default return value is 0 but callers expect None"
+
+error-handling:
+  CRITICAL:
+    - "Database write has no rollback on failure, leaving inconsistent state"
+  HIGH:
+    - "File open without try/except; crashes on missing file"
+    - "Network call with no timeout or retry"
+    - "JSON parse error swallowed silently, returns stale data"
+  MEDIUM:
+    - "Generic except Exception hides root cause"
+    - "Error message does not include the failing input"
+  LOW:
+    - "Warning logged but exception context not attached"
+
+documentation:
+  CRITICAL:
+    - "Docstring describes opposite behavior of what function does"
+  HIGH:
+    - "Public API function has no docstring"
+  MEDIUM:
+    - "Parameter descriptions missing for complex function"
+    - "Comment references deleted function"
+  LOW:
+    - "Docstring uses inconsistent style (Google vs NumPy)"
+    - "Minor typo in docstring"
+
+performance:
+  CRITICAL:
+    - "O(n^3) nested loops where O(n log n) algorithm exists"
+  HIGH:
+    - "Regex compiled inside tight loop instead of once at module level"
+    - "Entire file read into memory repeatedly in a loop"
+  MEDIUM:
+    - "List used for membership checks instead of set"
+    - "String concatenation in loop instead of join"
+  LOW:
+    - "Unnecessary copy of small list"
+
+security:
+  CRITICAL:
+    - "SQL query built with string formatting, allowing injection"
+    - "User input passed to subprocess shell command"
+    - "API secret hardcoded in source file"
+  HIGH:
+    - "Path traversal possible via unsanitized user filename"
+    - "Pickle used to deserialize untrusted data"
+  MEDIUM:
+    - "CORS allows all origins in production config"
+  LOW:
+    - "Debug endpoint left enabled but behind auth"
+
+concurrency:
+  CRITICAL:
+    - "Shared mutable dict modified by multiple threads without lock"
+    - "TOCTOU race between file existence check and file open"
+  HIGH:
+    - "Counter incremented without atomic operation in threaded code"
+  MEDIUM:
+    - "Lock acquisition order inconsistent across methods, risk of deadlock"
+  LOW:
+    - "Thread-local storage used but not cleaned up on thread exit"
+
+api-contract:
+  CRITICAL:
+    - "Function returns None on error but callers assume non-None"
+    - "Method mutates input list that caller expects unchanged"
+  HIGH:
+    - "Function silently ignores unknown keyword arguments"
+    - "Return type changes from list to generator depending on input"
+  MEDIUM:
+    - "Optional parameter default is mutable (empty list)"
+  LOW:
+    - "Function accepts **kwargs but only uses two known keys"
+
+dead-code:
+  CRITICAL:
+    - "Condition is always False, so security check never runs"
+  HIGH:
+    - "Entire else branch unreachable due to prior return"
+  MEDIUM:
+    - "Imported module never used, suggests incomplete refactor"
+    - "Function defined but never called anywhere"
+  LOW:
+    - "Commented-out code block left behind"
+
+resource-leak:
+  CRITICAL:
+    - "Database connection opened but never closed on exception path"
+  HIGH:
+    - "File handle not closed if processing raises midway"
+    - "Subprocess spawned but never waited on or killed"
+  MEDIUM:
+    - "Temp files created but not cleaned up on early return"
+  LOW:
+    - "Socket timeout set but connection not explicitly closed in finally"
+
+maintainability:
+  CRITICAL:
+    - "Single 300-line function with deeply nested conditionals"
+  HIGH:
+    - "Same 20-line block copy-pasted in four places"
+    - "Six levels of nesting make control flow hard to follow"
+  MEDIUM:
+    - "Function does three unrelated things (e.g. read, transform, write)"
+    - "Boolean parameters change function behavior in non-obvious ways"
+  LOW:
+    - "Variable names are single letters in a 40-line function"
+    - "Inconsistent naming convention across module"
+
+hardcoding:
+  CRITICAL:
+    - "Database password embedded as string literal in source"
+  HIGH:
+    - "API endpoint URL hardcoded, differs between environments"
+    - "Timeout of 30 seconds hardcoded with no configuration option"
+  MEDIUM:
+    - "Magic number 86400 used instead of named constant for seconds-per-day"
+    - "File path /tmp/output.csv hardcoded"
+  LOW:
+    - "Column width 80 hardcoded but unlikely to change"
+
+observability:
+  CRITICAL:
+    - "Exception caught and re-raised with no logging"
+  HIGH:
+    - "Error path returns default value with no log or metric"
+    - "Retry loop has no logging of attempts or final failure"
+  MEDIUM:
+    - "Log message says 'error occurred' but omits which error or input"
+  LOW:
+    - "Debug log emitted on every request in hot path"
+
+type-safety:
+  CRITICAL:
+    - "Optional value accessed without None check, crashes at runtime"
+    - "Dict get() returns None, passed directly to len()"
+  HIGH:
+    - "isinstance check misses subclass, wrong branch taken"
+    - "Function annotated to return str but returns None on failure"
+  MEDIUM:
+    - "Dynamic getattr without hasattr guard"
+  LOW:
+    - "Variable reused with different type in same scope"
+
+testing:
+  CRITICAL:
+    - "Mock is so broad it masks a real bug in the code under test"
+    - "Test data contains copy-pasted production PII"
+  HIGH:
+    - "Test assertions check implementation details, not behavior"
+    - "No test for the error/failure path of a critical function"
+    - "Test uses sleep/timing instead of proper synchronization"
+  MEDIUM:
+    - "Flaky test that depends on dict or set iteration order"
+    - "Test shares mutable state with other tests via class variable"
+  LOW:
+    - "Test name does not describe what it verifies"
+
+other: {}

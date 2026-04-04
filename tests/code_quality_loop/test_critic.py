@@ -6,6 +6,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "code_quality_loop"))
 import critic
+from common import load_issue_types
 
 
 RAW_ISSUES = [
@@ -18,16 +19,26 @@ RAW_ISSUES = [
     }
 ]
 
+# Number of LLM calls = number of issue types (one per type including "other")
+_NUM_ISSUE_TYPES = len(load_issue_types())
+
+
+def _make_fake_response(text: str) -> MagicMock:
+    resp = MagicMock()
+    resp.content = [MagicMock(text=text)]
+    return resp
+
 
 def test_run_assigns_ids_and_writes_issues_json(tmp_path: Path) -> None:
     source = tmp_path / "sample.py"
     source.write_text("def calculate_average(values):\n    return sum(values) / len(values)\n")
 
-    fake_response = MagicMock()
-    fake_response.content = [MagicMock(text=json.dumps(RAW_ISSUES))]
+    # One type returns an issue, all others return []
+    responses = [_make_fake_response("[]")] * _NUM_ISSUE_TYPES
+    responses[0] = _make_fake_response(json.dumps(RAW_ISSUES))
 
     with patch("critic.ANTHROPIC_CLIENT") as mock_client:
-        mock_client.messages.create.return_value = fake_response
+        mock_client.messages.create.side_effect = responses
         critic.run(source)
 
     result_path = tmp_path / "sample.issues.json"
@@ -43,11 +54,12 @@ def test_run_assigns_sequential_ids(tmp_path: Path) -> None:
     source.write_text("x = 1\n")
 
     two_issues = RAW_ISSUES + [{**RAW_ISSUES[0], "fingerprint": "second issue"}]
-    fake_response = MagicMock()
-    fake_response.content = [MagicMock(text=json.dumps(two_issues))]
+    # First type returns two issues, rest return []
+    responses = [_make_fake_response("[]")] * _NUM_ISSUE_TYPES
+    responses[0] = _make_fake_response(json.dumps(two_issues))
 
     with patch("critic.ANTHROPIC_CLIENT") as mock_client:
-        mock_client.messages.create.return_value = fake_response
+        mock_client.messages.create.side_effect = responses
         critic.run(source)
 
     result_path = tmp_path / "sample.issues.json"
@@ -60,14 +72,47 @@ def test_run_returns_issues_path_next_to_source(tmp_path: Path) -> None:
     source = tmp_path / "mymodule.py"
     source.write_text("x = 1\n")
 
-    fake_response = MagicMock()
-    fake_response.content = [MagicMock(text="[]")]
+    responses = [_make_fake_response("[]")] * _NUM_ISSUE_TYPES
 
     with patch("critic.ANTHROPIC_CLIENT") as mock_client:
-        mock_client.messages.create.return_value = fake_response
+        mock_client.messages.create.side_effect = responses
         critic.run(source)
 
     result_path = tmp_path / "mymodule.issues.json"
     assert result_path.exists()
     assert result_path.parent == tmp_path
     assert result_path.name == "mymodule.issues.json"
+
+
+def test_issues_from_multiple_types_get_sequential_ids(tmp_path: Path) -> None:
+    source = tmp_path / "sample.py"
+    source.write_text("x = 1\n")
+
+    issue_a = [{
+        "fingerprint": "issue from type A",
+        "severity": "HIGH",
+        "location": "foo",
+        "description": "desc a",
+        "fix": "fix a",
+    }]
+    issue_b = [{
+        "fingerprint": "issue from type B",
+        "severity": "MEDIUM",
+        "location": "bar",
+        "description": "desc b",
+        "fix": "fix b",
+    }]
+    responses = [_make_fake_response("[]")] * _NUM_ISSUE_TYPES
+    responses[0] = _make_fake_response(json.dumps(issue_a))
+    responses[2] = _make_fake_response(json.dumps(issue_b))
+
+    with patch("critic.ANTHROPIC_CLIENT") as mock_client:
+        mock_client.messages.create.side_effect = responses
+        critic.run(source)
+
+    written = json.loads((tmp_path / "sample.issues.json").read_text())
+    assert len(written) == 2
+    assert written[0]["id"] == 1
+    assert written[1]["id"] == 2
+    assert written[0]["fingerprint"] == "issue from type A"
+    assert written[1]["fingerprint"] == "issue from type B"

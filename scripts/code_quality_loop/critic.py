@@ -13,9 +13,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-from common import decisions_path, issues_path, load_prompt, log_append, now_utc, \
-    strip_markdown_fence, ANTHROPIC_CLIENT
-
+from common import decisions_path, format_examples_for_type, issues_path, \
+    load_issue_examples, load_issue_types, load_prompt, log_append, now_utc, \
+    strip_markdown_fence, ANTHROPIC_CLIENT, parse_llm_response
 
 _MODEL = "claude-opus-4-6"
 
@@ -24,20 +24,22 @@ class CodeCritic:
     """Evaluates source code and produces a list of quality issues."""
 
     def __init__(self, source_path: Path):
-        self.source_path = source_path
+        self.source_path = source_path.resolve()
         self.ip = issues_path(source_path)
         self.dp = decisions_path(source_path)
         self.existing_issues: list[dict[str, Any]] = (
             json.loads(self.ip.read_text(encoding="utf-8")) if self.ip.exists() else []
         )
         self.next_id = max((issue["id"] for issue in self.existing_issues), default=0) + 1
+        self.issue_types = load_issue_types()
+        self.issue_examples = load_issue_examples()
 
     def run(self) -> None:
         known_unresolved = self._known_unresolved_issues()
-        user_message = self._build_user_message(known_unresolved)
+        message_for_llm = self._build_message_for_llm(known_unresolved)
 
         print(f"Code critic: reviewing {self.source_path} ...")
-        new_issues = self._review(user_message)
+        new_issues = self._review(message_for_llm)
         print(f"Code critic: found {len(new_issues)} new issue(s), "
               f"{len(known_unresolved)} already known.")
 
@@ -63,9 +65,9 @@ class CodeCritic:
                 d["id"] for d in decisions
                 if d["status"] in ("done", "no_longer_relevant", "impossible")
             }
-        return [i for i in self.existing_issues if i["id"] not in resolved_ids]
+        return [issue for issue in self.existing_issues if issue["id"] not in resolved_ids]
 
-    def _build_user_message(self, known_unresolved: list[dict[str, Any]]) -> str:
+    def _build_message_for_llm(self, known_unresolved: list[dict[str, Any]]) -> str:
         source_code = self.source_path.read_text(encoding="utf-8")
         if known_unresolved:
             return (
@@ -75,18 +77,62 @@ class CodeCritic:
             )
         return source_code
 
-    def _review(self, user_message: str) -> list[dict[str, Any]]:
-        system_prompt = load_prompt("critic_prompt.md").replace(
-            "{{ISSUE_TYPES}}", load_prompt("issue_types.md"),
+    _FOCUS_PREFIX = "In this round, you should focus only on issues that can be categorised as:"
+
+    def _review(self, message_for_llm: str) -> list[dict[str, Any]]:
+        all_types_text = "\n\n".join(t["body"] for t in self.issue_types)
+        non_other = [t for t in self.issue_types if t["id"] != "other"]
+        prompt_template = load_prompt("critic_prompt.md")
+
+        all_raw: list[dict[str, Any]] = []
+
+        for issue_type in non_other:
+            rule_title, rule_body = issue_type["body"][3:].split("\n", 1)
+            rule_body = rule_body.strip()
+            # Remove initial upper unless it's an uppercase acronym
+            # "Ul..." -> "ul..."  but  "API..." -> keep
+            if not rule_body[:2].isupper():
+                rule_body = rule_body[0].lower() + rule_body[1:]
+            rule_section = f"## Focus Rule: {rule_title}\n\n{self._FOCUS_PREFIX} {rule_body}"
+            examples = format_examples_for_type(self.issue_examples, issue_type["id"])
+            system_prompt = (
+                prompt_template
+                .replace("{{RULE_SECTION}}", rule_section)
+                .replace("{{EXAMPLES}}", examples)
+            )
+            raw = self._call_critic(system_prompt, message_for_llm)
+            print(f"  {issue_type['id']}: {len(raw)} issue(s)")
+            all_raw.extend(raw)
+
+        # "other" run: all types visible, find only uncategorised issues
+        rule_section = (
+            f"## Issue types\n\n{all_types_text}\n\n"
+            f"Report ONLY issues that do NOT fit any of the types listed above. "
+            f"Use type 'other' for these. "
+            f"If every issue already fits an existing type, return []."
         )
+        examples = format_examples_for_type(self.issue_examples, "other")
+        system_prompt = (
+            prompt_template
+            .replace("{{RULE_SECTION}}", rule_section)
+            .replace("{{EXAMPLES}}", examples)
+        )
+        raw = self._call_critic(system_prompt, message_for_llm)
+        print(f"  other: {len(raw)} issue(s)")
+        all_raw.extend(raw)
+
+        return self._assign_ids(all_raw)
+
+    @staticmethod
+    def _call_critic(system_prompt: str, message_for_llm: str) -> list[dict[str, Any]] | None:
         response = ANTHROPIC_CLIENT.messages.create(
             model=_MODEL,
             max_tokens=4096,
             system=system_prompt,
-            messages=[{"role": "user", "content": user_message}],
+            messages=[{"role": "user", "content": message_for_llm}],
         )
-        raw_issues = json.loads(strip_markdown_fence(response.content[0].text))
-        return self._assign_ids(raw_issues)
+        response_text = response.content[0].text
+        return parse_llm_response(response_text)
 
     def _assign_ids(self, raw_issues: list[dict[str, Any]]) -> list[dict[str, Any]]:
         for ri in raw_issues:

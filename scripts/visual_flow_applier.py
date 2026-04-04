@@ -26,6 +26,8 @@ import anthropic
 
 from dotenv import load_dotenv
 
+from .code_quality_loop.common import parse_llm_response
+
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -119,45 +121,6 @@ def call_claude(prompt: str) -> str:
     )
     return message.content[0].text
 
-
-def _extract_json_object(text: str) -> str | None:
-    """Find a JSON object in text by locating '{"key":' and brace-counting to the matching '}'."""
-    text = text.strip()
-    start_pos = text.find('{"rule":"')
-    if start_pos < 0:
-        start_pos = text.find('{\n"rule":')
-        if start_pos < 0:
-            print(
-                "Warning: no JSON object starting with "
-                "'{\"rule\":\"' found in response.",
-                file=sys.stderr,
-            )
-            return None
-    if text.endswith('}'):
-        # Assume the JSON string goes till the end of the text
-        return text[start_pos:]
-    print("Warning: response does not end with '}', cannot extract JSON object.", file=sys.stderr)
-    return None
-
-
-def parse_claude_response(response: str) -> dict | None:
-    """Parse Claude's JSON response. Returns None if no violation found."""
-    response = response.strip()
-    if response.endswith('{}'):
-        return None
-    try:
-        data = json.loads(response)
-    except json.JSONDecodeError:
-        json_str = _extract_json_object(response)
-        if not json_str:
-            print(f"Warning: no JSON found in Claude response:\n{response[:200]}", file=sys.stderr)
-            return None
-        try:
-            data = json.loads(json_str)
-        except json.JSONDecodeError:
-            print(f"Warning: could not parse extracted JSON:\n{json_str[:200]}", file=sys.stderr)
-            return None
-    return data
 
 _APPROVAL_SYSTEM_PROMPT ="""
 You are an elite software engineer, an expert in determining 
@@ -285,7 +248,7 @@ def _apply_rule(rule: dict, current_code: str, log_path: Path) -> str | None:
     print(f"Checking rule {rule['id']}: {rule['title']} (scope: {rule['scope']})...")
     prompt = build_prompt(rule, current_code)
     response_text = call_claude(prompt)
-    result = parse_claude_response(response_text)
+    result = parse_llm_response(response_text)
 
     if result is None:
         print("  No violation found.")
