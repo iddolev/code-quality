@@ -72,26 +72,28 @@ class WrapLongLines(MarkdownFormatter):
 
     @staticmethod
     def _protect_inline_constructs(text: str) -> tuple[str, list[str]]:
-        """Replace spaces inside inline Markdown constructs with placeholders.
+        """Replace inline Markdown constructs with unique numbered tokens.
 
-        Returns the modified text and a list of original matched spans so we
-        can verify the round-trip (though restoration relies on the placeholder
-        character, not on the list).
+        Returns the modified text and a list of original matched spans used
+        for restoration.
         """
         originals: list[str] = []
 
-        def _replace_spaces(m: re.Match[str]) -> str:
-            original = m.group(0)
-            originals.append(original)
-            return original.replace(" ", _PLACEHOLDER_CHAR)
+        def _replace_with_token(m: re.Match[str]) -> str:
+            idx = len(originals)
+            originals.append(m.group(0))
+            return f"{_PLACEHOLDER_CHAR}{idx}{_PLACEHOLDER_CHAR}"
 
-        protected = _INLINE_CONSTRUCTS_RE.sub(_replace_spaces, text)
+        protected = _INLINE_CONSTRUCTS_RE.sub(_replace_with_token, text)
         return protected, originals
 
     @staticmethod
-    def _restore_inline_constructs(text: str) -> str:
-        """Restore placeholder characters back to spaces."""
-        return text.replace(_PLACEHOLDER_CHAR, " ")
+    def _restore_inline_constructs(text: str, originals: list[str]) -> str:
+        """Restore numbered placeholder tokens back to original spans."""
+        for idx, original in enumerate(originals):
+            token = f"{_PLACEHOLDER_CHAR}{idx}{_PLACEHOLDER_CHAR}"
+            text = text.replace(token, original)
+        return text
 
     def _wrap_single_line(self, line: str) -> list[str]:
         """Wrap a single long line respecting its indentation and list-item context.
@@ -115,7 +117,7 @@ class WrapLongLines(MarkdownFormatter):
             content_after_marker = line.lstrip()
 
         # Protect inline constructs from being split by textwrap.
-        protected, _ = self._protect_inline_constructs(content_after_marker)
+        protected, originals = self._protect_inline_constructs(content_after_marker)
 
         wrapped = textwrap.fill(protected,
                                 width=MAX_LINE_LENGTH,
@@ -124,6 +126,6 @@ class WrapLongLines(MarkdownFormatter):
                                 break_long_words=False,
                                 break_on_hyphens=False)
 
-        # Restore the protected spaces.
-        wrapped = self._restore_inline_constructs(wrapped)
+        # Restore the protected spans.
+        wrapped = self._restore_inline_constructs(wrapped, originals)
         return wrapped.split("\n")
