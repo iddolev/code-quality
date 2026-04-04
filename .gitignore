@@ -169,3 +169,6 @@ desktop.ini
 private/
 tmp/
 *.local.*
+*.issues.json
+*.decisions.json
+*.log.jsonl
