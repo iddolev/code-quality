@@ -1,19 +1,33 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python scripts/format_markdown.py --check 2>&1)",
-      "Bash(python scripts/format_markdown.py --check instructions/structuring.md 2>&1)",
-      "Bash(python -c \"import py_compile; py_compile.compile\\('scripts/format_markdown.py', doraise=True\\)\" 2>&1)",
-      "Bash(python scripts/format_markdown.py --check 2>&1 || true)",
-      "Bash(python scripts/format_markdown.py --check)",
-      "Bash(find /c/Code/code-quality-guidelines/.claude -type f -exec wc -l {} + 2>/dev/null)",
-      "Bash(find /c/Code/code-quality-guidelines -maxdepth 2 -name \"*.md\" -type f 2>/dev/null | xargs ls -lh)",
-      "Bash(ruff --version)",
+      "Bash(awk:*)",
+      "Bash(bandit:*)",
+      "Bash(cat:*)",
+      "Bash(deptry:*)",
+      "Bash(echo:*)",
+      "Bash(find:*)",
+      "Bash(git:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
       "Bash(pip install:*)",
-      "Bash(ruff check:*)",
-      "Write(file_path:tmp/quality_review/**)",
+      "Bash(pip show:*)",
+      "Bash(pylint:*)",
+      "Bash(pytest:*)",
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Bash(radon:*)",
+      "Bash(ruff:*)",
+      "Bash(vulture:*)",
+      "Bash(xargs grep:*)",
       "Edit(file_path:tmp/quality_review/**)",
-      "Bash(mkdir -p tmp/quality_review)"
+      "Read(**)",
+      "WebFetch(domain:*)",
+      "Write(file_path:tmp/quality_review/**)",
+      "mcp__plugin_context7_context7__query-docs",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "mcp__sequential-thinking__sequentialthinking"
     ]
   }
 }

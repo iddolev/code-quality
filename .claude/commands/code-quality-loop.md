@@ -1,3 +1,8 @@
+---
+description: "Apply a feedback loop that asks LLM to find issues"
+argument-hint: "<file-or-folder (optional)>"
+---
+
 # Code Quality Loop — Claude Workflow
 
 This file is the orchestration guide for the code quality loop. Claude reads it and
