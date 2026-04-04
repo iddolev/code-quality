@@ -21,7 +21,7 @@
       "Bash(ruff:*)",
       "Bash(vulture:*)",
       "Bash(xargs grep:*)",
-      "Edit(file_path:tmp/quality_review/**)",
+      "Edit(**.decisions.json)",
       "Read(**)",
       "WebFetch(domain:*)",
       "Write(file_path:tmp/quality_review/**)",

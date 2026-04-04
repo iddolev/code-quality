@@ -88,18 +88,19 @@ For each issue show:
 - Proposed fix
 - Senior SE reasoning — why it was escalated
 
-Then invite the user to respond. Do **not** present a numbered menu. Keep it
-conversational.
+Then use the `AskUserQuestion` tool to ask for the user's decision with these
+four options:
 
-### Handling responses
+- **Approve** — apply the fix as proposed
+- **Reject** — don't apply this fix
+- **Skip** — defer it to a future run
+- **Custom** — provide a different fix instruction
 
-If the record has `action: skipped_re_ask`, note to the user that this issue was
-previously deferred.
+If the record has `action: skipped_re_ask`, note in the question that this issue
+was previously deferred.
 
-Stay in the conversation for the current issue until the user reaches a clear
-decision, or decides to skip the issue for now.
-The user may want to ask questions, explore alternatives, or look at related
-code — engage with all of that before asking for a final call.
+The user may choose "Other" to ask questions, explore alternatives, or look at
+related code — engage with all of that before asking for a final decision.
 
 Once a decision is reached, update the existing record in `decisions.json` by finding
 it by `id` and applying these fields:
