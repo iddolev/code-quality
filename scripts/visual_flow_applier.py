@@ -250,7 +250,7 @@ def _apply_rule(rule: dict, current_code: str, log_path: Path) -> str | None:
     response_text = call_claude(prompt)
     result = parse_llm_response(response_text)
 
-    if result is None:
+    if not result:
         print("  No violation found.")
         return None
 

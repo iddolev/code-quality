@@ -28,7 +28,6 @@ Each issue JSON object must have exactly these fields:
 {
   "fingerprint": "<6-8 word semantic label capturing the essence of the problem>",
   "severity":    "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",
-  "type":        "<one of the type identifiers listed in the Issue Types section below>",
   "location":    "<function name and/or line range>",
   "description": "<what is wrong and why it matters>",
   "fix":         "<concrete, specific suggestion>"

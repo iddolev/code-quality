@@ -100,9 +100,8 @@ class CodeCritic:
                 .replace("{{RULE_SECTION}}", rule_section)
                 .replace("{{EXAMPLES}}", examples)
             )
-            raw = self._call_critic(system_prompt, message_for_llm)
-            print(f"  {issue_type['id']}: {len(raw)} issue(s)")
-            all_raw.extend(raw)
+            all_raw.extend(
+                self._run_on_type(system_prompt, message_for_llm, issue_type["id"]))
 
         # "other" run: all types visible, find only uncategorised issues
         rule_section = (
@@ -117,14 +116,21 @@ class CodeCritic:
             .replace("{{RULE_SECTION}}", rule_section)
             .replace("{{EXAMPLES}}", examples)
         )
-        raw = self._call_critic(system_prompt, message_for_llm)
-        print(f"  other: {len(raw)} issue(s)")
-        all_raw.extend(raw)
+        all_raw.extend(self._run_on_type(system_prompt, message_for_llm, "other"))
 
         return self._assign_ids(all_raw)
 
+    def _run_on_type(self, system_prompt: str, message_for_llm: str,
+                     type_id: str) -> list[dict[str, Any]]:
+        raw = self._call_critic(system_prompt, message_for_llm)
+        # Add type as the first field in each issue dict
+        ret = [{'type': type_id, **issue}
+               for issue in raw]
+        print(f"  {type_id}: {len(ret)} issue(s)")
+        return ret
+
     @staticmethod
-    def _call_critic(system_prompt: str, message_for_llm: str) -> list[dict[str, Any]] | None:
+    def _call_critic(system_prompt: str, message_for_llm: str) -> list[dict[str, Any]]:
         response = ANTHROPIC_CLIENT.messages.create(
             model=_MODEL,
             max_tokens=4096,
@@ -132,7 +138,7 @@ class CodeCritic:
             messages=[{"role": "user", "content": message_for_llm}],
         )
         response_text = response.content[0].text
-        return parse_llm_response(response_text)
+        return parse_llm_response(response_text) or []
 
     def _assign_ids(self, raw_issues: list[dict[str, Any]]) -> list[dict[str, Any]]:
         for ri in raw_issues:
