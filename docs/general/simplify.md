@@ -5,7 +5,8 @@
 `/simplify` is a [built-in ("bundled") skill](https://code.claude.com/docs/en/skills#bundled-skills).
 The official docs says:
 
-`/simplify [focus]` - Review your recently changed files for code reuse, quality, and efficiency issues, then fix them. Spawns three review agents in parallel, aggregates their findings, and applies fixes. Pass text to focus on specific concerns: `/simplify focus on memory efficiency`.
+`/simplify [focus]` - Review your recently changed files for code reuse, quality, and efficiency issues, then fix them. Spawns three
+review agents in parallel, aggregates their findings, and applies fixes. Pass text to focus on specific concerns: `/simplify focus on memory efficiency`.
 
 
 
@@ -14,6 +15,7 @@ The official docs says:
 1. Cannot know what it really does, because it's part of the Claude Code binary, not a markdown file skill.
 
 The description above says: Review your *recently changed* files. Not all files.
+
 1. Seems like if we want to run it on an entire file, 
    we'd need to copy the file to a different folder that does not have a `.git` folder,
    and create a "claude project" there. 

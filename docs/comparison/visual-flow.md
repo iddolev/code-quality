@@ -6,7 +6,9 @@ Below is information obtained from claude.ai about alternatives.
 
 ## Summary
 
-Existing tools can *detect* some of these issues but cannot *fix* most of them. Several guidelines are essentially unaddressed by current tooling and are well-suited for an LLM-based refactoring tool rather than a traditional linter/formatter.
+Existing tools can *detect* some of these issues but cannot *fix* most of them. Several guidelines are essentially
+unaddressed by current tooling and are well-suited for an LLM-based refactoring tool rather than a traditional
+linter/formatter.
 
 | # | Guideline | Existing Tool? |
 |---|-----------|---------------|
@@ -24,7 +26,10 @@ Existing tools can *detect* some of these issues but cannot *fix* most of them. 
 
 **⚠️ Partially covered.**
 
-Tools like **`black`** and **`autopep8`** enforce line length limits and will wrap long lines. However, they use their own opinionated style (e.g., `black` always uses orphan parentheses), which may conflict with guideline 2. **`flake8`** can *detect* lines over a limit (`E501`) but won't fix them. No tool handles the comprehension-splitting style described in this guideline the way it prescribes.
+Tools like **`black`** and **`autopep8`** enforce line length limits and will wrap long lines. However, they use their own
+opinionated style (e.g., `black` always uses orphan parentheses), which may conflict with guideline 2. **`flake8`** can *detect*
+lines over a limit (`E501`) but won't fix them. No tool handles the comprehension-splitting style described in this
+guideline the way it prescribes.
 
 ---
 
@@ -32,7 +37,9 @@ Tools like **`black`** and **`autopep8`** enforce line length limits and will wr
 
 **❌ Not covered.**
 
-**`black`** actively uses orphan parentheses, which is the *opposite* of what this guideline wants for short function names. There is no mainstream tool that implements this nuanced rule (align to opening paren for short names; use orphan parens only for long names > 30 characters).
+**`black`** actively uses orphan parentheses, which is the *opposite* of what this guideline wants for short function names.
+There is no mainstream tool that implements this nuanced rule (align to opening paren for short names; use orphan parens
+only for long names > 30 characters).
 
 ---
 
@@ -40,7 +47,8 @@ Tools like **`black`** and **`autopep8`** enforce line length limits and will wr
 
 **⚠️ Detection only.**
 
-**`flake8`** with the `flake8-functions` plugin can flag functions exceeding a line count. **`pylint`** has `too-many-statements`. But no tool *automatically refactors* long blocks into helper functions — that requires semantic understanding of the code.
+**`flake8`** with the `flake8-functions` plugin can flag functions exceeding a line count. **`pylint`** has `too-many-statements`. But no tool *automatically
+refactors* long blocks into helper functions — that requires semantic understanding of the code.
 
 ---
 
@@ -48,7 +56,8 @@ Tools like **`black`** and **`autopep8`** enforce line length limits and will wr
 
 **⚠️ Detection only.**
 
-**`flake8`** with `flake8-cognitive-complexity` or **`pylint`** (`too-many-nested-blocks`) can detect excessive nesting. No tool automatically refactors it using the early-`continue` or helper-function extraction patterns described in this guideline.
+**`flake8`** with `flake8-cognitive-complexity` or **`pylint`** (`too-many-nested-blocks`) can detect excessive nesting. No tool automatically refactors it using the early-`continue`
+or helper-function extraction patterns described in this guideline.
 
 ---
 
@@ -56,7 +65,8 @@ Tools like **`black`** and **`autopep8`** enforce line length limits and will wr
 
 **❌ Not meaningfully covered.**
 
-**`pylint`** has `W0703` (broad-except) and some related warnings, but there is no tool that specifically flags or fixes a large `try` block. This guideline is largely unaddressed by existing tooling.
+**`pylint`** has `W0703` (broad-except) and some related warnings, but there is no tool that specifically flags or fixes a large
+`try` block. This guideline is largely unaddressed by existing tooling.
 
 ---
 
@@ -64,7 +74,9 @@ Tools like **`black`** and **`autopep8`** enforce line length limits and will wr
 
 **❌ Not covered.**
 
-This is a higher-level design/architecture refactoring that no linter or formatter addresses. It requires understanding data flow across functions, which is beyond static analysis tools. **`pylint`** can flag `too-many-arguments` (R0913) as a weak hint in this direction, but it cannot suggest or apply the class-encapsulation pattern.
+This is a higher-level design/architecture refactoring that no linter or formatter addresses. It requires understanding
+data flow across functions, which is beyond static analysis tools. **`pylint`** can flag `too-many-arguments` (R0913) as a weak hint in this
+direction, but it cannot suggest or apply the class-encapsulation pattern.
 
 ---
 
@@ -72,4 +84,6 @@ This is a higher-level design/architecture refactoring that no linter or formatt
 
 **⚠️ Partially covered.**
 
-**`pylint`** has `R0201` / `no-self-use`, which suggests a method could be a `@staticmethod`. However, the specific pattern here — detecting that a *module-level* function is only called from within one class and should be moved inside it — is not handled by any existing tool.
+**`pylint`** has `R0201` / `no-self-use`, which suggests a method could be a `@staticmethod`. However, the specific pattern here — detecting that a
+*module-level* function is only called from within one class and should be moved inside it — is not handled by any
+existing tool.

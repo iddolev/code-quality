@@ -92,6 +92,10 @@ class FixHeadingAndListSpacing(MarkdownFormatter):
 
         if is_item:
             if not in_list:
+                # Only insert a blank line before a top-level list start.
+                # Nested sub-lists (indented items inside an existing list)
+                # intentionally do NOT get a blank line — they belong to the
+                # parent item's content flow.
                 if result and not self._is_heading(result[-1]):
                     self._ensure_blank_line(result)
                     self._collapse_trailing_blanks(result)

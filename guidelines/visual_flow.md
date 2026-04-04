@@ -35,7 +35,8 @@ or error handling behavior - do so very carefully.
 
 > scope: local
 
-Long lines should be split rather than allowing them to overflow beyond 100 characters. They should be split in logical places.
+Long lines should be split rather than allowing them to overflow beyond 100 characters. They should be split in logical
+places.
 
 ### Example 1: Split Function Parameters Onto Separate Lines
 
@@ -269,7 +270,8 @@ except OSError as e:
     warn(f"Could not update version in {INFO_FILE}: {e}")
 ```
 
-Here, the `OSError` concern belongs with the file I/O, but it sits 15 lines away from `read_text`. The reader has to scan the entire block to understand what the `except` is guarding. Prefer:
+Here, the `OSError` concern belongs with the file I/O, but it sits 15 lines away from `read_text`. The reader has to scan the entire
+block to understand what the `except` is guarding. Prefer:
 
 ```python
 try:
@@ -491,7 +493,8 @@ class NextRunner:
         ...
 ```
 
-`_check_relevance` and `_parse_needs_update` are logically part of `NextRunner`'s algorithm, but because they don't reference `self`, the LLM placed them outside the class. Prefer:
+`_check_relevance` and `_parse_needs_update` are logically part of `NextRunner`'s algorithm, but because they don't reference `self`, the LLM placed them outside the
+class. Prefer:
 
 ```python
 class NextRunner:

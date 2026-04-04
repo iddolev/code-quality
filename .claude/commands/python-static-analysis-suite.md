@@ -71,7 +71,8 @@ do a final pass on the log file, and remove from it:
 - Any item of pylint R0903 (too-few-public-methods)        (produces too many false positives)
 - Any item of pylint C0116 (missing-function-docstring)    (produces too many false positives)
 - Any item of pylint R0902 (too-many-instance-attributes)  (produces too many false positives)
-- Any item of pyright [TYPE SAFETY] "Error — Cannot access attribute "text" on non-TextBlock content types"  (because the intended behavior is raising exception when returned content is not a TextBlock)
+- Any item of pyright [TYPE SAFETY] "Error — Cannot access attribute "text" on non-TextBlock content types"  (because
+  the intended behavior is raising exception when returned content is not a TextBlock)
 
 ## Do the fixes
 

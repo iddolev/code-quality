@@ -59,6 +59,7 @@ The script does two things in order:
    - `implement` — safe to apply automatically
    - `no` — should not be applied
    - `needs_human_approval` — requires human judgement
+
    Each record also contains the reason why the senior SE made this decision.
 
 No human input is involved in this phase.
@@ -155,7 +156,8 @@ relevance check against the current source file, and writes one of:
 The relevance check has four possible verdicts. The script handles them internally:
 
 - `applicable` - Returns `NEXT` with the original issue unchanged
-- `needs_update` - Appends `{description, location, timestamp}` to a `history` list on the issue record in `issues.json` (preserving the old values), then overwrites description and location with the updated values, and returns `NEXT` with the refreshed issue
+- `needs_update` - Appends `{description, location, timestamp}` to a `history` list on the issue record in `issues.json` (preserving the old values), then overwrites description
+  and location with the updated values, and returns `NEXT` with the refreshed issue
 - `no_longer_relevant` - Marks the decision as `no_longer_relevant` in `decisions.json`, moves to the next decision
 - `impossible` - Marks the decision as `impossible` in `decisions.json`, moves to the next decision |
 

@@ -25,7 +25,8 @@ Runs on **Opus** (most capable model).
 
 ## What It Does
 
-After code is written or modified, it reviews and refines it for clarity and consistency without changing behavior. It acts as a lightweight automated code reviewer focused purely on style and structure.
+After code is written or modified, it reviews and refines it for clarity and consistency without changing behavior. It
+acts as a lightweight automated code reviewer focused purely on style and structure.
 
 ## Rules
 
@@ -39,7 +40,8 @@ After code is written or modified, it reviews and refines it for clarity and con
 
 ## How It's Triggered
 
-Invoked via the `Agent` tool with `subagent_type: "code-simplifier:code-simplifier"`. It runs autonomously and proactively — once dispatched, it refines without asking for permission and only reports significant changes.
+Invoked via the `Agent` tool with `subagent_type: "code-simplifier:code-simplifier"`. It runs autonomously and proactively — once dispatched, it refines without asking for
+permission and only reports significant changes.
 
 ## Notes
 
