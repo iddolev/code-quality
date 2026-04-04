@@ -22,6 +22,18 @@ _INLINE_CONSTRUCTS_RE = re.compile(
 )
 
 _PLACEHOLDER_CHAR = "\x00"
+_TOKEN_RE = re.compile(re.escape(_PLACEHOLDER_CHAR) + r"(\d+)" + re.escape(_PLACEHOLDER_CHAR))
+
+# Regex that captures the leading whitespace, the list marker (with its
+# trailing space), and the rest of the line.  Works for ``- ``, ``* ``,
+# ``+ ``, and ``1. `` / ``12) `` style markers.
+_LIST_MARKER_RE = re.compile(
+    r"^(?P<indent>\s*)"
+    r"(?P<marker>(?:[-*+]|\d+[.)]))[ \t]+"
+)
+
+# Regex that captures a leading blockquote prefix, e.g. "> ", ">> ", "> > ".
+_BLOCKQUOTE_RE = re.compile(r"^(?:>\s*)+")
 
 
 class WrapLongLines(MarkdownFormatter):
@@ -90,31 +102,51 @@ class WrapLongLines(MarkdownFormatter):
     @staticmethod
     def _restore_inline_constructs(text: str, originals: list[str]) -> str:
         """Restore numbered placeholder tokens back to original spans."""
-        for idx, original in enumerate(originals):
-            token = f"{_PLACEHOLDER_CHAR}{idx}{_PLACEHOLDER_CHAR}"
-            text = text.replace(token, original)
-        return text
+        def _replace_token(m: re.Match[str]) -> str:
+            return originals[int(m.group(1))]
+
+        return _TOKEN_RE.sub(_replace_token, text)
+
+    @staticmethod
+    def _strip_blockquote_prefix(line: str) -> tuple[str, str]:
+        """Strip and return the blockquote prefix and the remaining content.
+
+        Returns a tuple of (prefix, rest) where *prefix* is the leading
+        ``> `` / ``>> `` portion (empty string when the line is not a
+        blockquote) and *rest* is the remainder of the line.
+        """
+        bq = _BLOCKQUOTE_RE.match(line)
+        if bq:
+            prefix = bq.group(0)
+            rest = line[bq.end():]
+            # Normalise: ensure the prefix ends with a single space so that
+            # continuation lines look consistent.
+            if not prefix.endswith(" "):
+                prefix += " "
+            return prefix, rest
+        return "", line
 
     def _wrap_single_line(self, line: str) -> list[str]:
         """Wrap a single long line respecting its indentation and list-item context.
 
         Returns a list of wrapped line strings.
         """
-        initial_indent = self.detect_indent(line)
-        is_list = self.is_list_item_start(line)
-        subsequent_indent = (
-            self.list_continuation_indent(line) if is_list else initial_indent
-        )
+        # Strip blockquote prefix first so the rest of the logic sees plain
+        # content.  The prefix is re-added to every wrapped output line.
+        bq_prefix, line_without_bq = self._strip_blockquote_prefix(line)
 
-        if is_list:
-            marker_width = len(subsequent_indent) - len(initial_indent)
-            stripped = line.lstrip()
-            marker = stripped[:marker_width]
-            content_after_marker = stripped[marker_width:]
-            full_initial_indent = initial_indent + marker
+        m = _LIST_MARKER_RE.match(line_without_bq)
+        if m:
+            indent = m.group("indent")
+            marker_and_space = line_without_bq[len(indent):m.end()]
+            full_initial_indent = bq_prefix + indent + marker_and_space
+            subsequent_indent = bq_prefix + indent + " " * len(marker_and_space)
+            content_after_marker = line_without_bq[m.end():]
         else:
-            full_initial_indent = initial_indent
-            content_after_marker = line.lstrip()
+            initial_indent = self.detect_indent(line_without_bq)
+            full_initial_indent = bq_prefix + initial_indent
+            subsequent_indent = bq_prefix + initial_indent
+            content_after_marker = line_without_bq.lstrip()
 
         # Protect inline constructs from being split by textwrap.
         protected, originals = self._protect_inline_constructs(content_after_marker)

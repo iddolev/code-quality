@@ -211,3 +211,21 @@ class TestNulCharPreserved:
         assert "\x00" in result, "NUL byte was corrupted during wrapping"
 
 
+class TestBlockquoteWrapping:
+    """Issue #22: blockquote lines not handled during wrapping."""
+
+    def test_blockquote_continuation_has_prefix(self):
+        text = "> " + _long()
+        result = _rule.apply(text)
+        for line in result.splitlines():
+            assert line.startswith("> "), \
+                f"Blockquote continuation missing '> ' prefix: {repr(line[:10])}"
+
+    def test_nested_blockquote_continuation(self):
+        text = ">> " + _long()
+        result = _rule.apply(text)
+        for line in result.splitlines():
+            assert line.startswith(">> "), \
+                f"Nested blockquote continuation missing '>> ' prefix: {repr(line[:10])}"
+
+
