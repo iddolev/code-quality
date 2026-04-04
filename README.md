@@ -16,6 +16,12 @@ python .\scripts\install-tools.py
 
 1. guidelines/visual_flow.md  -- used by scripts/visual_flow_applier.py and 
 
-## Tools
+## Claude Code Commands
 
-2. .claude/commands/python-static-analysis-suite.md  -- uses .claude/scripts/python_static_analysis_suite.py
+1. /python-static-analysis-suite.md  -- uses .claude/scripts/python_static_analysis_suite.py
+2. /code-quality-loop.md  -- uses .claude/scripts/code_quality_loop.py and related scripts in that folder
+3. /visual-flow.md  -- uses .claude/scripts/visual_flow_applier.py
+
+## Other
+
+TBD: format-markdown
