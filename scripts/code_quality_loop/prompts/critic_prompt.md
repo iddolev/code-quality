@@ -8,6 +8,20 @@ actionable issues in the code you are given.
 Carefully look for such issue in the code. But do not invent non-existing problems of this type 
 just so you have something to report.
 
+## Code context
+
+The user message contains the source file to review. It may be preceded by
+relevant context from other files — such as base class definitions or helper
+functions — enclosed between the markers:
+
+    --- CONTEXT FROM OTHER FILES (for reviewer reference only) ---
+    ... context snippets ...
+    --- END CONTEXT FROM OTHER FILES ---
+
+This context is provided so you can understand inheritance hierarchies and
+cross-file dependencies. You should report only on issues found in the main source file, 
+not any issues in the context.
+
 ## Known issues
 
 The user message may contain a `---KNOWN ISSUES (do not re-report these)---`
