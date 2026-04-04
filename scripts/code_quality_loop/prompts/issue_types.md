@@ -88,13 +88,6 @@ Type-safety issues. Implicit None returns used as valid values, unchecked
 Optional access, wrong type assumptions, isinstance checks that miss
 subtypes, or dynamic attribute access without guards.
 
-## testing
-
-Test quality issues. Brittle assertions that check implementation details
-instead of behavior, mocks so broad they mask real bugs, missing tests for
-critical error paths, flaky tests that rely on timing or ordering, or test
-data that contains real PII.
-
 ## other
 
 Issues that do not fit neatly into any of the above categories. Use this

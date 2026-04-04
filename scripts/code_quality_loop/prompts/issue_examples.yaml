@@ -167,18 +167,4 @@ type-safety:
   LOW:
     - "Variable reused with different type in same scope"
 
-testing:
-  CRITICAL:
-    - "Mock is so broad it masks a real bug in the code under test"
-    - "Test data contains copy-pasted production PII"
-  HIGH:
-    - "Test assertions check implementation details, not behavior"
-    - "No test for the error/failure path of a critical function"
-    - "Test uses sleep/timing instead of proper synchronization"
-  MEDIUM:
-    - "Flaky test that depends on dict or set iteration order"
-    - "Test shares mutable state with other tests via class variable"
-  LOW:
-    - "Test name does not describe what it verifies"
-
 other: {}
