@@ -68,7 +68,7 @@ class CodeCritic:
             decisions = json.loads(self.dp.read_text(encoding="utf-8"))
             resolved_ids = {
                 d["id"] for d in decisions
-                if d["status"] in ("done", "no_longer_relevant", "impossible")
+                if d["status"] in ("done", "to_test", "no_longer_relevant", "impossible")
             }
         return [issue for issue in self.existing_issues if issue["id"] not in resolved_ids]
 

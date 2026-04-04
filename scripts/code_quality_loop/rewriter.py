@@ -61,7 +61,7 @@ class Rewriter:
         source_code = self.source_path.read_text(encoding="utf-8")
         new_source = self._apply_fix(source_code, fix_instruction)
         self.source_path.write_text(new_source, encoding="utf-8")
-        decision["status"] = "done"
+        decision["status"] = "to_test"
         decision["last_updated"] = now_utc()
         self.dp.write_text(json.dumps(self.decisions, indent=2), encoding="utf-8")
         issue = self.issues_by_id[self.issue_id]

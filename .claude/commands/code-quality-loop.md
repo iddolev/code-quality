@@ -124,7 +124,14 @@ rejected, deferred, or given a custom instruction. Then proceed to Phase 4.
 
 ---
 
-## Phase 4 — Rewriter
+## Phase 4 — Test Driven Development
+
+Before any source code is modified, ensure the test suite covers the issues that
+are about to be fixed by reading and following the instructions in `scripts/code_quality_loop/phase4-tdd.md`.
+
+---
+
+## Phase 5 — Rewriter
 
 Apply fixes one at a time using a loop. Each iteration asks Senior SE for the next
 relevant issue, then immediately applies it before checking the next issue — each
@@ -157,13 +164,33 @@ If the response is `NEXT <json>`, run the rewriter for that issue:
 python scripts/code_quality_loop/rewriter.py <source_path> --id <issue_id>
 ```
 
-Then repeat the loop from the top.
+The rewriter sets the decision status to `to_test` (not `done`) after applying the
+fix.
+
+### Verify the fix
+
+After each rewrite, immediately verify it by:
+
+1. Remove the `@pytest.mark.xfail` marker from the test(s) for this issue (the
+   ones added in Phase 4 with `reason="issue #<id>: ..."`).
+2. Run the full test suite:
+
+   ```bash
+   python -m pytest <test_file> -v
+   ```
+
+3. If all tests pass (including the formerly-xfail test), update the decision
+   status from `to_test` to `done`.
+4. If the new test still fails, or if other tests broke, report the failure to
+   the user and stop the loop — do not continue to the next issue.
+
+Then repeat the loop from the top (call Senior SE for the next issue).
 
 ### End of loop
 
 When Senior SE responds with `DONE`, report to the user:
 
-- How many fixes were applied
+- How many fixes were applied and verified
 - How many were skipped as no longer relevant
 - How many deferred decisions remain for a future run (the `n` from `DONE <n>`)
 
