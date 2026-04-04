@@ -16,6 +16,29 @@ The user triggers this workflow with an input argument which is a source file pa
 /code-quality path/to/file.py
 ```
 
+### Multi-file mode
+
+If no argument is given, ask the user on what file or folder they want to run.
+
+If the argument is `all` run the workflow on **every
+`.py` file in the repository**, excluding:
+
+- Files inside `sandbox/`
+- Files excluded by `.gitignore` (e.g. `venv/`, `tmp/`, `__pycache__/`, etc.)
+
+To collect the file list, run:
+
+```bash
+git ls-files '*.py'
+```
+
+This respects `.gitignore` automatically. Then filter out any paths that start with
+`sandbox/`. Process the resulting files **one at a time**, running the full workflow
+(Phases 1-5 + the optional re-loop) on each file before moving to the next. Report
+which file is being processed as you go.
+
+---
+
 All four phases operate on sibling files next to the source code file:
 
 - `<file>.issues.json` — critic output
