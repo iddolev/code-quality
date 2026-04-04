@@ -16,7 +16,7 @@ from typing import Any
 from common import decisions_path, format_examples_for_type, issues_path, \
     load_issue_examples, load_issue_types, load_prompt, log_append, now_utc, \
     strip_markdown_fence, ANTHROPIC_CLIENT, parse_llm_response
-from parent_context import gather_parent_context
+from parent_context import gather_external_context
 
 _MODEL = "claude-opus-4-6"
 
@@ -34,7 +34,7 @@ class CodeCritic:
         self.next_id = max((issue["id"] for issue in self.existing_issues), default=0) + 1
         self.issue_types = load_issue_types()
         self.issue_examples = load_issue_examples()
-        self.parent_ctx = gather_parent_context(source_path)
+        self.external_ctx = gather_external_context(source_path)
         self.source_code = source_path.read_text(encoding="utf-8")
         self.all_types_text = "\n\n".join(t["body"] for t in self.issue_types)
         self.non_other = [t for t in self.issue_types if t["id"] != "other"]
@@ -73,7 +73,7 @@ class CodeCritic:
         return [issue for issue in self.existing_issues if issue["id"] not in resolved_ids]
 
     def _build_message_for_llm(self, known_unresolved: list[dict[str, Any]]) -> str:
-        parts = [self.parent_ctx, self.source_code] if self.parent_ctx else [self.source_code]
+        parts = [self.external_ctx, self.source_code] if self.external_ctx else [self.source_code]
         if known_unresolved:
             parts.append(
                 f"---KNOWN ISSUES (do not re-report these)---\n"

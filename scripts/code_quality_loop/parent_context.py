@@ -1,9 +1,12 @@
-"""Gather parent-class context for the critic.
+"""Gather external context for the critic.
 
 When the file under review contains a class that inherits from a
 user-defined parent in another file, this module extracts the relevant
 parts of the parent (constructor + overridden/used methods) so the
 critic has enough context to review the child class properly.
+
+It also extracts definitions of functions imported from other user files
+that are called in the file under review.
 """
 from __future__ import annotations
 
@@ -11,8 +14,8 @@ import ast
 from pathlib import Path
 
 
-def gather_parent_context(source_path: Path) -> str:
-    """Return a context block with relevant parent class snippets, or ''."""
+def gather_external_context(source_path: Path) -> str:
+    """Return a context block with parent class and imported function snippets, or ''."""
     source_code = source_path.read_text(encoding="utf-8")
     try:
         tree = ast.parse(source_code)
@@ -23,6 +26,22 @@ def gather_parent_context(source_path: Path) -> str:
     source_dir = source_path.parent
 
     context_parts: list[str] = []
+    context_parts.extend(_gather_parent_class_parts(tree, import_map, source_dir))
+    context_parts.extend(_gather_function_parts(tree, import_map, source_dir))
+
+    if not context_parts:
+        return ""
+    return (
+        "--- CONTEXT FROM OTHER FILES (for reviewer reference only) ---\n\n"
+        + "\n\n".join(context_parts)
+        + "\n\n--- END CONTEXT FROM OTHER FILES ---\n\n"
+    )
+
+
+def _gather_parent_class_parts(tree: ast.Module, import_map: dict,
+                                source_dir: Path) -> list[str]:
+    """Gather context snippets for parent classes defined in other user files."""
+    parts: list[str] = []
     for node in ast.iter_child_nodes(tree):
         if not isinstance(node, ast.ClassDef):
             continue
@@ -43,15 +62,62 @@ def gather_parent_context(source_path: Path) -> str:
             snippet = _extract_parent_snippet(parent_file, base_name, relevant_needed)
             if snippet:
                 rel = _try_relative(parent_file, source_dir)
-                context_parts.append(f"# From {rel}, class {base_name}:\n\n{snippet}")
+                parts.append(f"# From {rel}, class {base_name}:\n\n{snippet}")
+    return parts
 
-    if not context_parts:
+
+def _gather_function_parts(tree: ast.Module, import_map: dict,
+                           source_dir: Path) -> list[str]:
+    """Gather context snippets for functions imported from other user files."""
+    called_names = _find_all_called_names(tree)
+
+    # Group called imported names by resolved file
+    file_to_names: dict[Path, list[str]] = {}
+    for name in sorted(called_names):
+        if name not in import_map:
+            continue
+        module, level = import_map[name]
+        resolved = _resolve_local_module(source_dir, module, level)
+        if not resolved:
+            continue
+        file_to_names.setdefault(resolved, []).append(name)
+
+    parts: list[str] = []
+    for file_path, names in file_to_names.items():
+        snippet = _extract_function_snippets(file_path, set(names))
+        if snippet:
+            rel = _try_relative(file_path, source_dir)
+            parts.append(f"# From {rel}:\n\n{snippet}")
+    return parts
+
+
+def _find_all_called_names(tree: ast.Module) -> set[str]:
+    """Find all names directly called as functions anywhere in the module."""
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            names.add(node.func.id)
+    return names
+
+
+def _extract_function_snippets(file_path: Path, names: set[str]) -> str:
+    """Extract top-level function definitions matching names from a file."""
+    source = file_path.read_text(encoding="utf-8")
+    source_lines = source.splitlines()
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
         return ""
-    return (
-        "--- CONTEXT FROM OTHER FILES (for reviewer reference only) ---\n\n"
-        + "\n\n".join(context_parts)
-        + "\n\n--- END CONTEXT FROM OTHER FILES ---\n\n"
-    )
+
+    snippets: list[str] = []
+    for node in ast.iter_child_nodes(tree):
+        if (isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and node.name in names):
+            end_line = node.end_lineno or node.lineno
+            func_src = "\n".join(source_lines[node.lineno - 1 : end_line])
+            snippets.append(func_src)
+
+    return "\n\n".join(snippets)
 
 
 def _build_import_map(tree: ast.Module) -> dict[str, tuple[str | None, int]]:
