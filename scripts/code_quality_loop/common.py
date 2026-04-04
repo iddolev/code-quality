@@ -17,6 +17,10 @@ from dotenv import load_dotenv
 
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
+if not os.environ["ANTHROPIC_API_KEY"]:
+    print("Error: ANTHROPIC_API_KEY not set in environment", file=sys.stderr)
+    sys.exit(1)
+
 
 ANTHROPIC_CLIENT = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
