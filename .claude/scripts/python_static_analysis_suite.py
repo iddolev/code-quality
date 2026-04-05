@@ -54,7 +54,7 @@ STATS_TAG = "stats"
 LINE_INDENT = " " * 4
 
 
-class QualityRunner:
+class StaticAnalysisToolsRunner:
     """Runs code quality tools and writes results to a log file."""
 
     def __init__(self, log_file: TextIOWrapper):
@@ -200,7 +200,7 @@ def main() -> None:
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(log_path, "w", encoding="utf-8") as log_file:
-        runner = QualityRunner(log_file)
+        runner = StaticAnalysisToolsRunner(log_file)
         runner.run(path)
         runner.write_missing_tools_summary()
         runner.write_stats()
