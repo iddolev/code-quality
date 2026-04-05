@@ -1,8 +1,6 @@
 """Tests for parent_context.py."""
 from pathlib import Path
-import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "code_quality_loop"))
 from parent_context import gather_external_context
 
 

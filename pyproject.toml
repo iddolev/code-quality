@@ -3,6 +3,9 @@ name = "code-quality-guidelines"
 version = "0.1.0"
 dependencies = []
 
+[tool.pytest.ini_options]
+pythonpath = [".claude/code-quality/scripts"]
+
 [tool.ruff]
 exclude = ["venv", "sandbox", "tmp"]
 

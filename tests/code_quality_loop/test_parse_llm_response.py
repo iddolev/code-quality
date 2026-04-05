@@ -1,9 +1,6 @@
 """Tests for parse_llm_response and _extract_json."""
 import json
-import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "code_quality_loop"))
 from common import parse_llm_response
 
 

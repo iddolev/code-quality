@@ -151,7 +151,7 @@ def _resolve_local_module(source_dir: Path, module: str | None,
         parts = module.replace(".", "/")
         # Try source_dir first, then walk up to find a project root
         # where the full module path resolves (handles absolute imports
-        # like `from scripts.format_markdown.module import Class`).
+        # like `from format_markdown.module import Class`).
         for base in _ancestors(source_dir):
             found = _try_as_file_or_package(base / f"{parts}.py")
             if found:

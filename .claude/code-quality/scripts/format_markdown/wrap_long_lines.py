@@ -8,7 +8,7 @@ from __future__ import annotations
 import re
 import textwrap
 
-from scripts.format_markdown.markdown_formatter import MarkdownFormatter
+from markdown_formatter import MarkdownFormatter
 
 MAX_LINE_LENGTH = 120
 _URL_RE = re.compile(r"https?://\S+")

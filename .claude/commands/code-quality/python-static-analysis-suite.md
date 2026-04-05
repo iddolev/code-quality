@@ -17,7 +17,7 @@ Let timestamp = the current date and time in format YYYYMMDDhhmmss.
 Let raw_output_path = tmp/python_static_analysis_suite/<filename>_<timestamp>.raw.log.
 Let output_path = tmp/python_static_analysis_suite/<filename>_<timestamp>.log.
 
-Run .claude/scripts/python_static_analysis_suite.py and give it two input parameters:`$ARGUMENTS` and raw_output_path.
+Run `python_static_analysis_suite.py` and give it two input parameters:`$ARGUMENTS` and raw_output_path.
 Read the output and convert to the following format in output_path:
 
 ## Output format

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from scripts.format_markdown.markdown_formatter import MarkdownFormatter
+from markdown_formatter import MarkdownFormatter
 
 SMART_QUOTES = {
     "\u2018": "'",   # left single curly quote

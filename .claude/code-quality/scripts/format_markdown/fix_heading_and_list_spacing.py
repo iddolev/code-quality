@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 
-from scripts.format_markdown.markdown_formatter import MarkdownFormatter
+from markdown_formatter import MarkdownFormatter
 
 _HEADING_RE = re.compile(r"^#{1,6}\s")
 

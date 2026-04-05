@@ -8,7 +8,7 @@ Rules enforced:
   5. Ensure every list is followed by at least one blank line.
 
 Usage:
-    python -m scripts.format_markdown [paths...]
+    python -m format_markdown [paths...]
 
     If no paths are given, all *.md files in the repo are processed
     (excluding sandbox/ and tmp/ and .git/).
@@ -20,11 +20,15 @@ import argparse
 import sys
 from pathlib import Path
 
-from .fix_heading_and_list_spacing import FixHeadingAndListSpacing
-from .replace_with_ascii import ReplaceWithAscii
-from .wrap_long_lines import WrapLongLines
+# Ensure sibling modules are importable regardless of how this package is invoked
+# (e.g. via ``python -m format_markdown`` or direct sys.path manipulation in tests).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+from fix_heading_and_list_spacing import FixHeadingAndListSpacing
+from replace_with_ascii import ReplaceWithAscii
+from wrap_long_lines import WrapLongLines
+
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 
 EXCLUDE_PATTERNS = [
     "sandbox/",

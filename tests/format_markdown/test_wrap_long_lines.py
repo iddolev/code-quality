@@ -1,6 +1,6 @@
 """Tests for WrapLongLines (Rule 2)."""
 
-from scripts.format_markdown.wrap_long_lines import WrapLongLines, MAX_LINE_LENGTH
+from wrap_long_lines import WrapLongLines, MAX_LINE_LENGTH
 
 _rule = WrapLongLines()
 

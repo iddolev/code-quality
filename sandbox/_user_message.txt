@@ -1,0 +1,272 @@
+--- CONTEXT FROM OTHER FILES (for reviewer reference only) ---
+
+# From markdown_formatter.py, class MarkdownFormatter:
+
+class MarkdownFormatter(ABC):
+    # ... (only relevant methods shown)
+
+    def apply(self, text: str) -> str:
+        """Apply this formatting rule to *text* and return the result."""
+
+    def check_code_fence(line: str, current_fence: str | None) -> str | None:
+        """Track code fence state using matching markers.
+
+        Returns the updated fence marker: a non-None string when inside a
+        fenced block, or None when outside.  A closing fence must use the same
+        character (backtick or tilde) and be *at least* as long as the opening
+        fence.
+        """
+        m = _CODE_FENCE_RE.match(line)
+        if not m:
+            return current_fence
+
+        marker = m.group(1)
+        fence_char = marker[0]
+        fence_len = len(marker)
+
+        if current_fence is None:
+            return marker
+
+        open_char = current_fence[0]
+        open_len = len(current_fence)
+        if fence_char == open_char and fence_len >= open_len:
+            return None
+        return current_fence
+
+    def is_code_fence_line(line: str) -> bool:
+        return bool(_CODE_FENCE_RE.match(line))
+
+    def detect_indent(line: str) -> str:
+        return line[:len(line) - len(line.lstrip())]
+
+--- END CONTEXT FROM OTHER FILES ---
+
+
+
+"""Rule 2: Wrap lines longer than 120 characters.
+
+Exceptions: table rows, lines long only because of a URL, and code blocks.
+"""
+
+from __future__ import annotations
+
+import re
+import textwrap
+
+from scripts.format_markdown.markdown_formatter import MarkdownFormatter
+
+MAX_LINE_LENGTH = 120
+_URL_RE = re.compile(r"https?://\S+")
+
+# Patterns for inline Markdown constructs that should not be split across lines.
+_INLINE_CONSTRUCTS_RE = re.compile(
+    r"!\[[^\]]*\]\([^)]*\)"   # images  ![alt](url)
+    r"|\[[^\]]*\]\([^)]*\)"   # links   [text](url)
+    r"|\[[^\]]*\]\[[^\]]*\]"  # ref links [text][ref]
+    r"|`[^`]+`"                # inline code `code`
+)
+
+_PLACEHOLDER_CHAR = "\x00"
+_TOKEN_RE = re.compile(re.escape(_PLACEHOLDER_CHAR) + r"(\d+)" + re.escape(_PLACEHOLDER_CHAR))
+
+# Regex that captures the leading whitespace, the list marker (with its
+# trailing space), and the rest of the line.  Works for ``- ``, ``* ``,
+# ``+ ``, and ``1. `` / ``12) `` style markers.
+_LIST_MARKER_RE = re.compile(
+    r"^(?P<indent>\s*)"
+    r"(?P<marker>(?:[-*+]|\d+[.)]))[ \t]+"
+)
+
+# Regex that captures a leading blockquote prefix, e.g. "> ", ">> ", "> > ".
+_BLOCKQUOTE_RE = re.compile(r"^(?:>\s*)+")
+
+
+class WrapLongLines(MarkdownFormatter):
+    """Wrap lines exceeding 120 characters."""
+
+    def apply(self, text: str) -> str:
+        lines = text.splitlines()
+        result: list[str] = []
+        code_fence: str | None = None
+
+        for line in lines:
+            code_fence = self.check_code_fence(line, code_fence)
+            in_code = code_fence is not None and not self.is_code_fence_line(line)
+
+            if self.is_code_fence_line(line) or in_code or len(line) <= MAX_LINE_LENGTH:
+                result.append(line)
+            elif self._should_skip_wrapping(line):
+                result.append(line)
+            else:
+                result.extend(self._wrap_single_line(line))
+
+        output = "\n".join(result)
+        if text.endswith("\n"):
+            output += "\n"
+        return output
+
+    # -- private helpers -------------------------------------------------------
+
+    @staticmethod
+    def _is_table_row(line: str) -> bool:
+        """Return True if the line appears to be a Markdown table row."""
+        stripped = line.strip()
+        return stripped.startswith("|") and stripped.endswith("|")
+
+    @staticmethod
+    def _is_url_line(line: str) -> bool:
+        """True if the line is long only because it contains a URL."""
+        urls = _URL_RE.findall(line)
+        if not urls:
+            return False
+        without_urls = _URL_RE.sub('', line)
+        return len(without_urls) <= MAX_LINE_LENGTH
+
+    @classmethod
+    def _should_skip_wrapping(cls, line: str) -> bool:
+        """Return True if the line is a table row or is long only due to a URL."""
+        return cls._is_table_row(line) or cls._is_url_line(line)
+
+    @staticmethod
+    def _protect_inline_constructs(text: str) -> tuple[str, list[str]]:
+        """Replace inline Markdown constructs with unique numbered tokens.
+
+        Returns the modified text and a list of original matched spans used
+        for restoration.
+        """
+        originals: list[str] = []
+
+        def _replace_with_token(m: re.Match[str]) -> str:
+            idx = len(originals)
+            originals.append(m.group(0))
+            return f"{_PLACEHOLDER_CHAR}{idx}{_PLACEHOLDER_CHAR}"
+
+        protected = _INLINE_CONSTRUCTS_RE.sub(_replace_with_token, text)
+        return protected, originals
+
+    @staticmethod
+    def _restore_inline_constructs(text: str, originals: list[str]) -> str:
+        """Restore numbered placeholder tokens back to original spans."""
+        def _replace_token(m: re.Match[str]) -> str:
+            return originals[int(m.group(1))]
+
+        return _TOKEN_RE.sub(_replace_token, text)
+
+    @staticmethod
+    def _strip_blockquote_prefix(line: str) -> tuple[str, str]:
+        """Strip and return the blockquote prefix and the remaining content.
+
+        Returns a tuple of (prefix, rest) where *prefix* is the leading
+        ``> `` / ``>> `` portion (empty string when the line is not a
+        blockquote) and *rest* is the remainder of the line.
+        """
+        bq = _BLOCKQUOTE_RE.match(line)
+        if bq:
+            prefix = bq.group(0)
+            rest = line[bq.end():]
+            # Normalise: ensure the prefix ends with a single space so that
+            # continuation lines look consistent.
+            if not prefix.endswith(" "):
+                prefix += " "
+            return prefix, rest
+        return "", line
+
+    def _wrap_single_line(self, line: str) -> list[str]:
+        """Wrap a single long line respecting its indentation and list-item context.
+
+        Returns a list of wrapped line strings.
+        """
+        # Strip blockquote prefix first so the rest of the logic sees plain
+        # content.  The prefix is re-added to every wrapped output line.
+        bq_prefix, line_without_bq = self._strip_blockquote_prefix(line)
+
+        m = _LIST_MARKER_RE.match(line_without_bq)
+        if m:
+            indent = m.group("indent")
+            marker_and_space = line_without_bq[len(indent):m.end()]
+            full_initial_indent = bq_prefix + indent + marker_and_space
+            subsequent_indent = bq_prefix + indent + " " * len(marker_and_space)
+            content_after_marker = line_without_bq[m.end():]
+        else:
+            initial_indent = self.detect_indent(line_without_bq)
+            full_initial_indent = bq_prefix + initial_indent
+            subsequent_indent = bq_prefix + initial_indent
+            content_after_marker = line_without_bq.lstrip()
+
+        # Protect inline constructs from being split by textwrap.
+        protected, originals = self._protect_inline_constructs(content_after_marker)
+
+        wrapped = textwrap.fill(protected,
+                                width=MAX_LINE_LENGTH,
+                                initial_indent=full_initial_indent,
+                                subsequent_indent=subsequent_indent,
+                                break_long_words=False,
+                                break_on_hyphens=False)
+
+        # Restore the protected spans.
+        wrapped = self._restore_inline_constructs(wrapped, originals)
+        return wrapped.split("\n")
+
+---KNOWN ISSUES (do not re-report these)---
+[
+  {
+    "id": 9,
+    "last_updated": "2026-04-04T16:10:51Z",
+    "type": "other",
+    "fingerprint": "code fence opening line skipped from wrapping check",
+    "severity": "MEDIUM",
+    "location": "apply, line 28",
+    "description": "When a line is a code fence opening marker, `check_code_fence` returns a non-None value, so `code_fence is not None` is True. But `is_code_fence_line` is also True, so `in_code` is False. The line is then caught by the `is_code_fence_line(line)` guard and appended as-is, which is correct. However, for the closing fence line, `check_code_fence` returns None, so `code_fence` becomes None and `in_code` is False, meaning a very long closing fence line could theoretically be wrapped. This is a minor edge case but worth noting.",
+    "fix": "Store the previous fence state before calling `check_code_fence` and use it alongside `is_code_fence_line` to ensure closing fence lines are never wrapped."
+  },
+  {
+    "id": 11,
+    "last_updated": "2026-04-04T18:18:07Z",
+    "type": "edge-case",
+    "fingerprint": "trailing newline count not fully preserved",
+    "severity": "LOW",
+    "location": "apply, lines 33-36",
+    "description": "The method only preserves a single trailing newline. If the input text ends with multiple newlines (e.g. `\"hello\\n\\n\"`), the extra trailing newlines are lost because `splitlines()` drops trailing empty strings and only a single `\\n` is re-appended. This silently mutates content that may be significant.",
+    "fix": "Track whether the original text ends with more than one newline and preserve the exact trailing newline count, or use a split approach that retains trailing empty entries."
+  },
+  {
+    "id": 16,
+    "last_updated": "2026-04-04T18:45:18Z",
+    "type": "edge-case",
+    "fingerprint": "inline code regex fails on double backtick spans",
+    "severity": "MEDIUM",
+    "location": "_INLINE_CONSTRUCTS_RE pattern",
+    "description": "The inline code pattern `[^`]+` only handles single-backtick code spans. Double-backtick spans like ``code with ` inside`` are not matched, so their internal spaces can be split across lines, breaking the Markdown rendering. Similarly, link URLs containing parentheses (e.g. Wikipedia links) break the link pattern.",
+    "fix": "Extend the regex to also match double/triple backtick inline code spans (e.g. add ``[^`]``pattern variants) and handle balanced parentheses in link URLs."
+  },
+  {
+    "id": 18,
+    "last_updated": "2026-04-04T18:56:10Z",
+    "type": "edge-case",
+    "fingerprint": "placeholder char in input causes incorrect restoration",
+    "severity": "HIGH",
+    "location": "_protect_inline_constructs / _restore_inline_constructs",
+    "description": "If the input text already contains the null character (\\x00) used as the placeholder, the restoration step will incorrectly replace those occurrences. Additionally, if placeholder tokens like `\\x000\\x00` appear naturally in the content, they will be matched and replaced with the first protected construct, corrupting the output.",
+    "fix": "Use a placeholder scheme that is validated to not exist in the input, or use a more robust restoration approach (e.g., split-and-rejoin by token positions rather than blind string replacement)."
+  },
+  {
+    "id": 20,
+    "last_updated": "2026-04-04T18:56:10Z",
+    "type": "edge-case",
+    "fingerprint": "empty string input returns empty without trailing newline",
+    "severity": "LOW",
+    "location": "apply, lines 28-36",
+    "description": "When `text` is an empty string, `splitlines()` returns `[]`, so `result` stays empty, `\"\\n\".join(result)` produces `\"\"`, and the `text.endswith(\"\\n\")` check is False, so `\"\"` is returned. This is correct. However, when `text` is `\"\\n\"` (a single newline), `splitlines()` returns `['']`, the single empty line is appended, `join` produces `\"\"`, and then the trailing newline is re-added, producing `\"\\n\"`. This is fine. But for input like `\"\\n\\n\"`, `splitlines()` returns `['', '']`, which joins to `\"\\n\"`, then one newline is appended giving `\"\\n\\n\"` \u2014 which happens to be correct only by coincidence. For `\"a\\n\\n\"`, `splitlines()` \u2192 `['a', '']` \u2192 join `\"a\\n\"` + newline \u2192 `\"a\\n\\n\"` \u2014 correct. But `\"a\\n\\n\\n\"` \u2192 `['a', '', '']` \u2192 `\"a\\n\\n\"` + `\"\\n\"` \u2192 `\"a\\n\\n\\n\"` \u2014 also works. This is actually fine for trailing newlines > 1 because `splitlines()` does preserve interior empty lines. The known issue about multiple trailing newlines is already tracked, so disregard.",
+    "fix": "N/A \u2014 on closer inspection, `splitlines()` preserves interior blank lines and only the final trailing newline handling is a known issue."
+  },
+  {
+    "id": 24,
+    "last_updated": "2026-04-04T19:06:58Z",
+    "type": "error-handling",
+    "fingerprint": "restore inline constructs index out of bounds",
+    "severity": "HIGH",
+    "location": "_restore_inline_constructs, inner function _replace_token",
+    "description": "The `_replace_token` callback does `originals[int(m.group(1))]` without bounds-checking. If `textwrap.fill` or any other transformation introduces a token-like pattern (e.g., by duplicating or corrupting placeholder text), or if the index is otherwise out of range, this will raise an unhandled `IndexError` and crash the formatter.",
+    "fix": "Wrap the index lookup in a try/except IndexError (returning the original matched text on failure), or validate that the parsed index is within `range(len(originals))` before accessing the list."
+  }
+]

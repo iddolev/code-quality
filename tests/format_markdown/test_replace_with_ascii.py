@@ -1,6 +1,6 @@
 """Tests for ReplaceWithAscii (Rule 1)."""
 
-from scripts.format_markdown.replace_with_ascii import ReplaceWithAscii
+from replace_with_ascii import ReplaceWithAscii
 
 _rule = ReplaceWithAscii()
 

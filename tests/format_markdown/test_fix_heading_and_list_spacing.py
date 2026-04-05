@@ -1,6 +1,6 @@
 """Tests for FixHeadingAndListSpacing (Rules 3-5)."""
 
-from scripts.format_markdown.fix_heading_and_list_spacing import FixHeadingAndListSpacing
+from fix_heading_and_list_spacing import FixHeadingAndListSpacing
 
 _rule = FixHeadingAndListSpacing()
 

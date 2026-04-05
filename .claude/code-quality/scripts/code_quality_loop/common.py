@@ -71,6 +71,9 @@ def _call_via_cli(system: str, user_message: str, model: str) -> str:
         f.write(system)
         system_file = f.name
     try:
+        # Remove ANTHROPIC_API_KEY from the subprocess env so the CLI uses
+        # chat-account credits instead of API billing.
+        env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
         result = subprocess.run(
             ["claude", "-p",
              "--model", cli_model,
@@ -81,6 +84,7 @@ def _call_via_cli(system: str, user_message: str, model: str) -> str:
             capture_output=True,
             text=True,
             timeout=300,
+            env=env,
         )
         if result.returncode != 0:
             raise RuntimeError(

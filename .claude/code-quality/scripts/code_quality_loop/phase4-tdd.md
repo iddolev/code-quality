@@ -5,7 +5,7 @@ before code changes.
 ### Locate the test file
 
 The test file lives at `tests/<package>/<test_file>.py`, mirroring the source path.
-For example, `scripts/format_markdown/wrap_long_lines.py` →
+For example, `.claude/code-quality/scripts/format_markdown/wrap_long_lines.py` →
 `tests/format_markdown/test_wrap_long_lines.py`.
 
 If the test file does not exist yet, create it with comprehensive baseline tests

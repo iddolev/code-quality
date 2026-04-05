@@ -1,6 +1,6 @@
 """Tests for shared helpers in the MarkdownFormatter base class."""
 
-from scripts.format_markdown.markdown_formatter import MarkdownFormatter
+from markdown_formatter import MarkdownFormatter
 
 
 # MarkdownFormatter is abstract — use a trivial concrete subclass for testing.

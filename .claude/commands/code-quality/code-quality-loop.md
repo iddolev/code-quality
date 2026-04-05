@@ -52,7 +52,7 @@ All four phases operate on sibling files next to the source code file:
 Run the critic script to detect new issues:
 
 ```bash
-python scripts/code_quality_loop/critic.py <source_path>
+python .claude/code-quality/scripts/code_quality_loop/critic.py <source_path>
 ```
 
 The script reads the source file and passes it to Claude along with any currently
@@ -68,7 +68,7 @@ Report to the user: how many new issues were found and how many were already kno
 Run the triage script:
 
 ```bash
-python scripts/code_quality_loop/senior_se_triage.py <source_path>
+python .claude/code-quality/scripts/code_quality_loop/senior_se_triage.py <source_path>
 ```
 
 The script does two things in order:
@@ -158,7 +158,7 @@ rejected, deferred, or given a custom instruction. Then proceed to Phase 4.
 ## Phase 4 — Test Driven Development
 
 Before any source code is modified, ensure the test suite covers the issues that
-are about to be fixed by reading and following the instructions in `scripts/code_quality_loop/phase4-tdd.md`.
+are about to be fixed by reading and following the instructions in `.claude/code-quality/scripts/code_quality_loop/phase4-tdd.md`.
 
 ---
 
@@ -173,7 +173,7 @@ fix changes the source file, so this may affect the relevance of subsequent issu
 Call Senior SE to get the next issue that should be applied:
 
 ```bash
-python scripts/code_quality_loop/senior_se_next_issue.py <source_path>
+python .claude/code-quality/scripts/code_quality_loop/senior_se_next_issue.py <source_path>
 ```
 
 The script finds the next pending `implement` or `custom` decision, runs a
@@ -193,7 +193,7 @@ The relevance check has four possible verdicts. The script handles them internal
 If the response is `NEXT <json>`, run the rewriter for that issue:
 
 ```bash
-python scripts/code_quality_loop/rewriter.py <source_path> --id <issue_id>
+python .claude/code-quality/scripts/code_quality_loop/rewriter.py <source_path> --id <issue_id>
 ```
 
 The rewriter sets the decision status to `to_test` (not `done`) after applying the

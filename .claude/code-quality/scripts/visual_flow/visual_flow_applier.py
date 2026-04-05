@@ -4,10 +4,10 @@ For each rule in the guidelines file, sends the code to Claude with the
 corresponding prompt and scope, then applies the returned patch.
 
 Usage:
-    python scripts/visual_flow_applier.py <guidelines_file> <source_file>
+    python .claude/code-quality/scripts/visual_flow/visual_flow_applier.py <guidelines_file> <source_file>
 
 Example:
-    python scripts/visual_flow_applier.py guidelines/visual_flow.md src/app.py
+    python .claude/code-quality/scripts/visual_flow/visual_flow_applier.py guidelines/visual_flow.md src/app.py
 """
 
 from __future__ import annotations
@@ -26,9 +26,10 @@ import anthropic
 
 from dotenv import load_dotenv
 
-from .code_quality_loop.common import parse_llm_response
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "code_quality_loop"))
+from common import parse_llm_response
 
-load_dotenv(Path(__file__).parent.parent / ".env")
+load_dotenv(Path(__file__).resolve().parent.parent.parent.parent / ".env")
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROMPT_TEMPLATE_PATH = SCRIPT_DIR / "visual_flow_prompt.md"

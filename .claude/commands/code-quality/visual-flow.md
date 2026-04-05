@@ -8,7 +8,7 @@ argument-hint: "<file-or-folder (optional)>"
 - If the target is a single file, run the script on it directly:
 
 ```bash
-python scripts/visual_flow_applier.py guidelines/visual_flow.md <file> [--full]
+python .claude/code-quality/scripts/visual_flow/visual_flow_applier.py guidelines/visual_flow.md <file> [--full]
 ```
 
 - If the target is a folder, first list all code files in it, then run the script on **each file separately** so you can
