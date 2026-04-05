@@ -1,6 +1,5 @@
 @echo off
-REM This is the file to share with anyone who wants to
-REM install the code-quality suite in their project folder
+REM This file installs the code-quality suite in your project folder
 
 if not exist ".code-quality" mkdir ".code-quality"
 

@@ -20,8 +20,8 @@ The user triggers this workflow with an input argument which is a source file pa
 
 If no argument is given, ask the user on what file or folder they want to run.
 
-If the argument is `all` run the workflow on **every
-`.py` file in the repository**, excluding:
+If the argument is `all` (or the user selects "all" after being asked), run the
+workflow on every `.py` file in the repository, excluding:
 
 - Files inside `sandbox/`
 - Files excluded by `.gitignore` (e.g. `venv/`, `tmp/`, `__pycache__/`, etc.)
@@ -33,9 +33,43 @@ git ls-files '*.py'
 ```
 
 This respects `.gitignore` automatically. Then filter out any paths that start with
-`sandbox/`. Process the resulting files **one at a time**, running the full workflow
-(Phases 1-5 + the optional re-loop) on each file before moving to the next. Report
-which file is being processed as you go.
+`sandbox/`.
+
+#### Tracking file: `tmp/code_quality_run.json`
+
+Multi-file runs are tracked in `tmp/code_quality_run.json` so that interrupted runs
+can be resumed. The file contains a JSON array of objects, each with:
+
+```json
+[
+  { "filepath": "path/to/file.py", "status": "pending" },
+  { "filepath": "path/to/other.py", "status": "processing" },
+  { "filepath": "path/to/done.py", "status": "done" }
+]
+```
+
+**On invocation, follow this logic:**
+
+1. If `tmp/code_quality_run.json` **does not exist**, create it from the fresh file
+   list with every entry set to `"status": "pending"`.
+
+2. If the file **exists**, read it and inspect the statuses:
+   - If **all** entries are `"done"` or **all** are `"pending"`, the previous run
+     is either complete or was never started — **recreate** the file from a fresh
+     file list (re-running `git ls-files`) with all statuses set to `"pending"`.
+   - Otherwise the file represents an **interrupted run** — continue from it.
+
+3. To process the list:
+   - Find the first entry with `"status": "processing"`. If one exists, resume
+     the workflow on that file (it was interrupted mid-run).
+   - Otherwise, find the first entry with `"status": "pending"` and start there.
+   - Before beginning work on a file, update its status to `"processing"` and
+     write the file back to disk.
+   - After successfully completing the full workflow (Phases 1–5 + optional
+     re-loop) on a file, update its status to `"done"` and write the file back.
+
+Process files **one at a time**, running the full workflow on each file before
+moving to the next. Report which file is being processed as you go.
 
 ---
 
@@ -106,6 +140,7 @@ Otherwise, tell the user how many issues need their input, then present them
 
 For each issue show:
 
+- **File path** being reviewed (always reprint it — the user may have lost track)
 - Severity and fingerprint (as a heading)
 - Location
 - Description — what is wrong and why it matters

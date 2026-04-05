@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / ".claude" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / ".claude" / "code-quality" / "scripts"))
 import python_static_analysis_suite as suite
 from python_static_analysis_suite import StaticAnalysisToolsRunner
 

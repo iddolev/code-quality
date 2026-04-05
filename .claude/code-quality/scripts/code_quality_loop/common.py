@@ -1,40 +1,32 @@
 """Shared utilities for the code quality loop modules."""
 from __future__ import annotations
 
+import functools
 import json
+import logging
 import os
 import re
 import subprocess
 import sys
 import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 
 
-load_dotenv(Path(__file__).resolve().parents[4] / ".env")
+load_dotenv(find_dotenv())
+
+logger = logging.getLogger(__name__)
 
 # LLM_BACKEND controls how we call Claude:
 #   "api" (default) — uses the Anthropic Python SDK (requires ANTHROPIC_API_KEY, uses API credits)
 #   "cli"           — shells out to `claude -p` (uses Claude Code chat account credits)
 LLM_BACKEND = os.environ.get("LLM_BACKEND", "api").lower()
-
-_anthropic_client = None
-
-if LLM_BACKEND == "api":
-    import anthropic
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        if "pytest" not in sys.modules:
-            # Skip fatal exit during tests — tests may mock the client or use the "cli" backend
-            print("Error: ANTHROPIC_API_KEY not set in environment", file=sys.stderr)
-            sys.exit(1)
-    else:
-        _anthropic_client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-
 
 # Map full model names to short aliases accepted by `claude --model`.
 _CLI_MODEL_ALIASES = {
@@ -43,22 +35,60 @@ _CLI_MODEL_ALIASES = {
     "claude-haiku-4-5-20251001": "haiku",
 }
 
+DEFAULT_MAX_TOKENS = 4096
+DEFAULT_MODEL = os.environ.get("LLM_DEFAULT_MODEL", "claude-opus-4-6")
+_CLI_TIMEOUT = int(os.environ.get("LLM_CLI_TIMEOUT", "300"))
 
-def call_llm(*, system: str, user_message: str, max_tokens: int = 4096,
-             model: str = "claude-opus-4-6") -> str:
+_anthropic_client = None
+_anthropic_init_done = False
+
+
+def _get_anthropic_client():
+    """Return the Anthropic client, initializing lazily on first call."""
+    global _anthropic_client, _anthropic_init_done
+    if _anthropic_init_done:
+        return _anthropic_client
+    _anthropic_init_done = True
+    if LLM_BACKEND != "api":
+        return None
+    import anthropic
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return None
+    _anthropic_client = anthropic.Anthropic(api_key=api_key)
+    return _anthropic_client
+
+
+def call_llm(*, system: str, user_message: str, max_tokens: int = DEFAULT_MAX_TOKENS,
+             model: str = DEFAULT_MODEL) -> str:
     """Send a single-turn request to Claude and return the text response.
 
     Uses either the Anthropic API or the Claude CLI depending on LLM_BACKEND.
     """
-    if LLM_BACKEND == "api":
-        return _call_via_api(system, user_message, max_tokens, model)
-    if LLM_BACKEND == "cli":
-        return _call_via_cli(system, user_message, model)
-    raise ValueError(f"Unknown LLM_BACKEND: {LLM_BACKEND!r} (expected 'api' or 'cli')")
+    start = time.monotonic()
+    backend = LLM_BACKEND
+    try:
+        if backend == "api":
+            result = _call_via_api(system, user_message, max_tokens, model)
+        elif backend == "cli":
+            result = _call_via_cli(system, user_message, model)
+        else:
+            raise ValueError(f"Unknown LLM_BACKEND: {backend!r} (expected 'api' or 'cli')")
+        elapsed = time.monotonic() - start
+        logger.info("LLM call succeeded: model=%s backend=%s elapsed=%.1fs", model, backend, elapsed)
+        return result
+    except Exception:
+        elapsed = time.monotonic() - start
+        logger.error("LLM call failed: model=%s backend=%s elapsed=%.1fs", model, backend, elapsed)
+        raise
 
 
 def _call_via_api(system: str, user_message: str, max_tokens: int, model: str) -> str:
-    response = _anthropic_client.messages.create(
+    """Call Claude via the Anthropic Python SDK."""
+    client = _get_anthropic_client()
+    if client is None:
+        raise RuntimeError("Anthropic client not initialized — is ANTHROPIC_API_KEY set?")
+    response = client.messages.create(
         model=model,
         max_tokens=max_tokens,
         system=system,
@@ -67,8 +97,14 @@ def _call_via_api(system: str, user_message: str, max_tokens: int, model: str) -
     return response.content[0].text
 
 
+_VALID_MODEL_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
+
+
 def _call_via_cli(system: str, user_message: str, model: str) -> str:
+    """Call Claude via the ``claude`` CLI subprocess."""
     cli_model = _CLI_MODEL_ALIASES.get(model, model)
+    if not _VALID_MODEL_PATTERN.match(cli_model):
+        raise ValueError(f"Invalid model name for CLI: {cli_model!r}")
     # Write system prompt to a temp file to avoid shell quoting issues with long prompts.
     with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
         f.write(system)
@@ -86,7 +122,7 @@ def _call_via_cli(system: str, user_message: str, model: str) -> str:
             input=user_message,
             capture_output=True,
             text=True,
-            timeout=300,
+            timeout=_CLI_TIMEOUT,
             env=env,
         )
         if result.returncode != 0:
@@ -94,35 +130,55 @@ def _call_via_cli(system: str, user_message: str, model: str) -> str:
                 f"claude CLI exited with code {result.returncode}:\n"
                 f"stderr: {result.stderr}\nstdout: {result.stdout}"
             )
+        if result.stderr:
+            logger.warning("CLI stderr (rc=0): %s", result.stderr.strip())
         return result.stdout
+    except Exception:
+        logger.error("CLI subprocess error: model=%s, prompt_len=%d, timeout=%d",
+                      cli_model, len(user_message), _CLI_TIMEOUT)
+        raise
     finally:
-        os.unlink(system_file)
+        try:
+            os.unlink(system_file)
+        except OSError:
+            pass
 
 
 _PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 
 
 def load_prompt(filename: str) -> str:
-    return (_PROMPTS_DIR / filename).read_text(encoding="utf-8")
+    """Read and return the contents of *filename* from the prompts/ directory (UTF-8)."""
+    path = _PROMPTS_DIR / filename
+    try:
+        return path.read_text(encoding="utf-8")
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"Prompt file '{filename}' not found in {_PROMPTS_DIR}") from e
 
 
 def issues_path(source_path: Path) -> Path:
-    return source_path.with_suffix("").with_suffix(".issues.json")
+    """Return the .issues.json sidecar path for *source_path*."""
+    return source_path.parent / (source_path.stem + ".issues.json")
 
 
 def decisions_path(source_path: Path) -> Path:
-    return source_path.with_suffix("").with_suffix(".decisions.json")
+    """Return the .decisions.json sidecar path for *source_path*."""
+    return source_path.parent / (source_path.stem + ".decisions.json")
 
 
 def log_path(source_path: Path) -> Path:
-    return source_path.with_suffix("").with_suffix(".log.jsonl")
+    """Return the .log.jsonl sidecar path for *source_path*."""
+    return source_path.parent / (source_path.stem + ".log.jsonl")
 
 
 def log_append(source_path: Path, entry: dict) -> None:
     """Append a JSON log entry (with timestamp injected) to the .log.jsonl file."""
     entry = {"timestamp": now_utc(), **entry}
-    with log_path(source_path).open("a", encoding="utf-8") as f:
-        f.write(json.dumps(entry) + "\n")
+    try:
+        with log_path(source_path).open("a", encoding="utf-8") as f:
+            f.write(json.dumps(entry) + "\n")
+    except OSError as e:
+        print(f"Warning: failed to write log entry: {e}", file=sys.stderr)
 
 
 def now_utc() -> str:
@@ -135,15 +191,20 @@ def strip_markdown_fence(text: str) -> str:
     if stripped.startswith("```"):
         lines = stripped.split("\n", 1)
         if len(lines) < 2:
-            return text
+            return ""
         return lines[1].rsplit("```", 1)[0]
     return text
 
 
+@functools.lru_cache(maxsize=1)
 def load_issue_examples() -> dict[str, dict[str, list[str]]]:
     """Load issue_examples.yaml: {type_id: {severity: [example, ...]}}."""
     text = (_PROMPTS_DIR / "issue_examples.yaml").read_text(encoding="utf-8")
-    return yaml.safe_load(text)
+    try:
+        return yaml.safe_load(text) or {}
+    except yaml.YAMLError as e:
+        print(f"Warning: failed to parse issue_examples.yaml: {e}", file=sys.stderr)
+        return {}
 
 
 def format_examples_for_type(all_examples: dict[str, dict[str, list[str]]],
@@ -162,11 +223,13 @@ def format_examples_for_type(all_examples: dict[str, dict[str, list[str]]],
     return "\n".join(lines)
 
 
+_RE_ISSUE_HEADER = re.compile(r"^## (\S+)\s*$", re.MULTILINE)
+
+
 def load_issue_types() -> list[dict[str, str]]:
     """Parse issue_types.md into a list of {"id": ..., "body": ...} dicts."""
     text = load_prompt("issue_types.md")
-    header_pattern = re.compile(r"^## (\S+)\s*$", re.MULTILINE)
-    matches = list(header_pattern.finditer(text))
+    matches = list(_RE_ISSUE_HEADER.finditer(text))
     result = []
     for i, match in enumerate(matches):
         start = match.start()
@@ -181,6 +244,7 @@ def load_issue_types() -> list[dict[str, str]]:
 # [\s\S]*? matches any char including newlines.
 # The *? makes it non-greedy, so it matches the smallest stretch between ``` pairs
 # rather than gobbling from the first ``` to the very last ``` in the text.
+# Note: only handles an optional `json` language tag; other tags (e.g. ```python) are NOT stripped.
 _RE_FENCE = re.compile(r"```(?:json)?\s*\n?([\s\S]*?)```")
 _RE_JSON_OBJ_START = re.compile(r'\{\s*"(?:rule|fingerprint)":')
 _RE_JSON_ARRAY_START = re.compile(r'\[\s*\{\s*"(?:rule|fingerprint)":')
@@ -194,6 +258,8 @@ def _extract_json(text: str) -> str | None:
       1. Unwrap all markdown fences: replace ```(json)?...``` with their content.
       2. Strip and search backwards from the end for a JSON start: ``[{``, ``[\\n{``,
          ``{``, or ``{\\n`` — then take from that start to the end of the string.
+
+    Returns the raw JSON substring, or None if no JSON structure was found.
     """
     # 1. Unwrap all fenced blocks, keeping only their content.
     unwrapped = _RE_FENCE.sub(r"\1", text).strip()
@@ -215,18 +281,19 @@ def _extract_json(text: str) -> str | None:
     return unwrapped[matches[-1].start():] if matches else None
 
 
-def parse_llm_response(response: str) -> dict | list[dict[str, Any]] | None:
+def parse_llm_response(response: str, *, label: str = "") -> dict | list[dict[str, Any]] | None:
     """Parse Claude's JSON response.
 
     Returns the parsed dict/list, or None on parse failure.
     Empty containers ({} or []) are returned as-is — callers decide what empty means.
     """
+    prefix = f"[{label}] " if label else ""
     json_str = _extract_json(response)
     if not json_str:
-        print(f"Warning: no JSON found in Claude response:\n{response[:200]}", file=sys.stderr)
+        print(f"Warning: {prefix}no JSON found in Claude response:\n{response[:200]}", file=sys.stderr)
         return None
     try:
         return json.loads(json_str)
     except json.JSONDecodeError:
-        print(f"Warning: could not parse extracted JSON:\n{json_str[:200]}", file=sys.stderr)
+        print(f"Warning: {prefix}could not parse extracted JSON:\n{json_str[:200]}", file=sys.stderr)
         return None
