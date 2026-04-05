@@ -4,25 +4,93 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-import anthropic
-
 from dotenv import load_dotenv
 
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
-if not os.environ["ANTHROPIC_API_KEY"]:
-    print("Error: ANTHROPIC_API_KEY not set in environment", file=sys.stderr)
-    sys.exit(1)
+
+# LLM_BACKEND controls how we call Claude:
+#   "api" (default) — uses the Anthropic Python SDK (requires ANTHROPIC_API_KEY, uses API credits)
+#   "cli"           — shells out to `claude -p` (uses Claude Code chat account credits)
+LLM_BACKEND = os.environ.get("LLM_BACKEND", "api").lower()
+
+_anthropic_client = None
+
+if LLM_BACKEND == "api":
+    import anthropic
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        print("Error: ANTHROPIC_API_KEY not set in environment", file=sys.stderr)
+        sys.exit(1)
+    _anthropic_client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
 
-ANTHROPIC_CLIENT = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+# Map full model names to short aliases accepted by `claude --model`.
+_CLI_MODEL_ALIASES = {
+    "claude-opus-4-6": "opus",
+    "claude-sonnet-4-6": "sonnet",
+    "claude-haiku-4-5-20251001": "haiku",
+}
+
+
+def call_llm(*, system: str, user_message: str, max_tokens: int = 4096,
+             model: str = "claude-opus-4-6") -> str:
+    """Send a single-turn request to Claude and return the text response.
+
+    Uses either the Anthropic API or the Claude CLI depending on LLM_BACKEND.
+    """
+    if LLM_BACKEND == "api":
+        return _call_via_api(system, user_message, max_tokens, model)
+    if LLM_BACKEND == "cli":
+        return _call_via_cli(system, user_message, model)
+    raise ValueError(f"Unknown LLM_BACKEND: {LLM_BACKEND!r} (expected 'api' or 'cli')")
+
+
+def _call_via_api(system: str, user_message: str, max_tokens: int, model: str) -> str:
+    response = _anthropic_client.messages.create(
+        model=model,
+        max_tokens=max_tokens,
+        system=system,
+        messages=[{"role": "user", "content": user_message}],
+    )
+    return response.content[0].text
+
+
+def _call_via_cli(system: str, user_message: str, model: str) -> str:
+    cli_model = _CLI_MODEL_ALIASES.get(model, model)
+    # Write system prompt to a temp file to avoid shell quoting issues with long prompts.
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
+        f.write(system)
+        system_file = f.name
+    try:
+        result = subprocess.run(
+            ["claude", "-p",
+             "--model", cli_model,
+             "--system-prompt-file", system_file,
+             "--no-session-persistence",
+             "--output-format", "text"],
+            input=user_message,
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"claude CLI exited with code {result.returncode}:\n"
+                f"stderr: {result.stderr}\nstdout: {result.stdout}"
+            )
+        return result.stdout
+    finally:
+        os.unlink(system_file)
+
 
 _PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 

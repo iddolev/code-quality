@@ -1,6 +1,6 @@
 """Tests for critic.py."""
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 import json
 import sys
 
@@ -23,22 +23,15 @@ RAW_ISSUES = [
 _NUM_ISSUE_TYPES = len(load_issue_types())
 
 
-def _make_fake_response(text: str) -> MagicMock:
-    resp = MagicMock()
-    resp.content = [MagicMock(text=text)]
-    return resp
-
-
 def test_run_assigns_ids_and_writes_issues_json(tmp_path: Path) -> None:
     source = tmp_path / "sample.py"
     source.write_text("def calculate_average(values):\n    return sum(values) / len(values)\n")
 
     # One type returns an issue, all others return []
-    responses = [_make_fake_response("[]")] * _NUM_ISSUE_TYPES
-    responses[0] = _make_fake_response(json.dumps(RAW_ISSUES))
+    responses = ["[]"] * _NUM_ISSUE_TYPES
+    responses[0] = json.dumps(RAW_ISSUES)
 
-    with patch("critic.ANTHROPIC_CLIENT") as mock_client:
-        mock_client.messages.create.side_effect = responses
+    with patch("critic.call_llm", side_effect=responses):
         critic.run(source)
 
     result_path = tmp_path / "sample.issues.json"
@@ -55,11 +48,10 @@ def test_run_assigns_sequential_ids(tmp_path: Path) -> None:
 
     two_issues = RAW_ISSUES + [{**RAW_ISSUES[0], "fingerprint": "second issue"}]
     # First type returns two issues, rest return []
-    responses = [_make_fake_response("[]")] * _NUM_ISSUE_TYPES
-    responses[0] = _make_fake_response(json.dumps(two_issues))
+    responses = ["[]"] * _NUM_ISSUE_TYPES
+    responses[0] = json.dumps(two_issues)
 
-    with patch("critic.ANTHROPIC_CLIENT") as mock_client:
-        mock_client.messages.create.side_effect = responses
+    with patch("critic.call_llm", side_effect=responses):
         critic.run(source)
 
     result_path = tmp_path / "sample.issues.json"
@@ -72,10 +64,9 @@ def test_run_returns_issues_path_next_to_source(tmp_path: Path) -> None:
     source = tmp_path / "mymodule.py"
     source.write_text("x = 1\n")
 
-    responses = [_make_fake_response("[]")] * _NUM_ISSUE_TYPES
+    responses = ["[]"] * _NUM_ISSUE_TYPES
 
-    with patch("critic.ANTHROPIC_CLIENT") as mock_client:
-        mock_client.messages.create.side_effect = responses
+    with patch("critic.call_llm", side_effect=responses):
         critic.run(source)
 
     result_path = tmp_path / "mymodule.issues.json"
@@ -102,12 +93,11 @@ def test_issues_from_multiple_types_get_sequential_ids(tmp_path: Path) -> None:
         "description": "desc b",
         "fix": "fix b",
     }]
-    responses = [_make_fake_response("[]")] * _NUM_ISSUE_TYPES
-    responses[0] = _make_fake_response(json.dumps(issue_a))
-    responses[2] = _make_fake_response(json.dumps(issue_b))
+    responses = ["[]"] * _NUM_ISSUE_TYPES
+    responses[0] = json.dumps(issue_a)
+    responses[2] = json.dumps(issue_b)
 
-    with patch("critic.ANTHROPIC_CLIENT") as mock_client:
-        mock_client.messages.create.side_effect = responses
+    with patch("critic.call_llm", side_effect=responses):
         critic.run(source)
 
     written = json.loads((tmp_path / "sample.issues.json").read_text())

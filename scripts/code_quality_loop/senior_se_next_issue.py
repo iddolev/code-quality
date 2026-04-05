@@ -15,8 +15,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from common import decisions_path, issues_path, load_prompt, log_append, now_utc, \
-    ANTHROPIC_CLIENT
+from common import call_llm, decisions_path, issues_path, load_prompt, log_append, now_utc
 
 _MODEL = "claude-opus-4-6"
 
@@ -114,12 +113,13 @@ class NextRunner:
         """
         system_prompt = load_prompt("relevance_check_prompt.md")
         user_content = f"{self.source_code}\n\n---ISSUE---\n{json.dumps(issue, indent=2)}"
-        response = ANTHROPIC_CLIENT.messages.create(
-            model=_MODEL,
-            max_tokens=512,
+        raw = call_llm(
             system=system_prompt,
-            messages=[{"role": "user", "content": user_content}])
-        raw = response.content[0].text.strip()
+            user_message=user_content,
+            max_tokens=512,
+            model=_MODEL,
+        )
+        raw = raw.strip()
         first_line = raw.splitlines()[0].strip().lower()
         extra = "\n".join(raw.splitlines()[1:]).strip()
         return first_line, extra

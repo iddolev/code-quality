@@ -13,8 +13,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from common import decisions_path, issues_path, load_prompt, log_append, now_utc, \
-    strip_markdown_fence, ANTHROPIC_CLIENT
+from common import call_llm, decisions_path, issues_path, load_prompt, log_append, now_utc, \
+    strip_markdown_fence
 
 _MODEL = "claude-opus-4-6"
 
@@ -76,13 +76,13 @@ class SeniorSETriage:
 
     def _triage_issues(self, issues: list[dict[str, Any]]) -> list[dict[str, Any]]:
         system_prompt = load_prompt("senior_se_triage_prompt.md")
-        response = ANTHROPIC_CLIENT.messages.create(
-            model=_MODEL,
-            max_tokens=4096,
+        response_text = call_llm(
             system=system_prompt,
-            messages=[{"role": "user", "content": json.dumps(issues, indent=2)}],
+            user_message=json.dumps(issues, indent=2),
+            max_tokens=4096,
+            model=_MODEL,
         )
-        return json.loads(strip_markdown_fence(response.content[0].text))
+        return json.loads(strip_markdown_fence(response_text))
 
     def _process_triage_results(
             self,

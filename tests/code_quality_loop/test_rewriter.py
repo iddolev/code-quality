@@ -1,6 +1,6 @@
 """Tests for rewriter.py."""
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 import json
 import sys
 
@@ -41,12 +41,6 @@ FIXED_SOURCE = (
 )
 
 
-def _make_fake_response(text: str) -> MagicMock:
-    resp = MagicMock()
-    resp.content = [MagicMock(text=text)]
-    return resp
-
-
 def _write_files(tmp_path, issues, decisions):
     source = tmp_path / "sample.py"
     source.write_text(ORIGINAL_SOURCE)
@@ -60,13 +54,12 @@ def _write_files(tmp_path, issues, decisions):
 def test_applicable_fix_applied_and_status_done(tmp_path: Path) -> None:
     source = _write_files(tmp_path, [ISSUE], [DECISION_IMPLEMENT])
 
-    with patch("rewriter.ANTHROPIC_CLIENT") as mock_client:
-        mock_client.messages.create.return_value = _make_fake_response(FIXED_SOURCE)
+    with patch("rewriter.call_llm", return_value=FIXED_SOURCE):
         rewriter.run(source, issue_id=1)
 
     assert source.read_text() == FIXED_SOURCE
     decisions = json.loads((tmp_path / "sample.decisions.json").read_text())
-    assert decisions[0]["status"] == "done"
+    assert decisions[0]["status"] == "to_test"
 
 
 def test_custom_fix_overrides_issue_fix(tmp_path: Path) -> None:
@@ -76,15 +69,14 @@ def test_custom_fix_overrides_issue_fix(tmp_path: Path) -> None:
 
     call_args = []
 
-    def capturing_create(**kwargs):
+    def capturing_call_llm(**kwargs):
         call_args.append(kwargs)
-        return _make_fake_response(FIXED_SOURCE)
+        return FIXED_SOURCE
 
-    with patch("rewriter.ANTHROPIC_CLIENT") as mock_client:
-        mock_client.messages.create.side_effect = capturing_create
+    with patch("rewriter.call_llm", side_effect=capturing_call_llm):
         rewriter.run(source, issue_id=1)
 
-    fix_call_content = call_args[0]["messages"][0]["content"]
+    fix_call_content = call_args[0]["user_message"]
     assert "raise ValueError" in fix_call_content
     assert "return 0.0" not in fix_call_content
 
@@ -96,7 +88,7 @@ def test_action_no_and_skip_are_not_actionable(tmp_path: Path) -> None:
         [DECISION_NO, DECISION_SKIP],
     )
 
-    with patch("rewriter.ANTHROPIC_CLIENT") as mock_client:
+    with patch("rewriter.call_llm") as mock_llm:
         # issue_id=2 has action "no" — should not be found as actionable
         try:
             rewriter.run(source, issue_id=2)
@@ -105,7 +97,7 @@ def test_action_no_and_skip_are_not_actionable(tmp_path: Path) -> None:
             ran = False
 
     assert not ran
-    mock_client.messages.create.assert_not_called()
+    mock_llm.assert_not_called()
     assert source.read_text() == ORIGINAL_SOURCE
 
 
@@ -115,13 +107,12 @@ def test_empty_string_custom_fix_is_used_not_overridden(tmp_path: Path) -> None:
 
     call_args = []
 
-    def capturing_create(**kwargs):
+    def capturing_call_llm(**kwargs):
         call_args.append(kwargs)
-        return _make_fake_response(FIXED_SOURCE)
+        return FIXED_SOURCE
 
-    with patch("rewriter.ANTHROPIC_CLIENT") as mock_client:
-        mock_client.messages.create.side_effect = capturing_create
+    with patch("rewriter.call_llm", side_effect=capturing_call_llm):
         rewriter.run(source, issue_id=1)
 
-    fix_call_content = call_args[0]["messages"][0]["content"]
+    fix_call_content = call_args[0]["user_message"]
     assert "return 0.0" not in fix_call_content  # issue fix NOT used

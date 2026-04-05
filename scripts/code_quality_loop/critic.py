@@ -13,9 +13,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-from common import decisions_path, format_examples_for_type, issues_path, \
+from common import call_llm, decisions_path, format_examples_for_type, issues_path, \
     load_issue_examples, load_issue_types, load_prompt, log_append, now_utc, \
-    strip_markdown_fence, ANTHROPIC_CLIENT, parse_llm_response
+    parse_llm_response
 from parent_context import gather_external_context
 
 _MODEL = "claude-opus-4-6"
@@ -131,13 +131,12 @@ class CodeCritic:
 
     @staticmethod
     def _call_critic(system_prompt: str, message_for_llm: str) -> list[dict[str, Any]]:
-        response = ANTHROPIC_CLIENT.messages.create(
-            model=_MODEL,
-            max_tokens=4096,
+        response_text = call_llm(
             system=system_prompt,
-            messages=[{"role": "user", "content": message_for_llm}],
+            user_message=message_for_llm,
+            max_tokens=4096,
+            model=_MODEL,
         )
-        response_text = response.content[0].text
         return parse_llm_response(response_text) or []
 
     def _assign_ids(self, raw_issues: list[dict[str, Any]]) -> list[dict[str, Any]]:

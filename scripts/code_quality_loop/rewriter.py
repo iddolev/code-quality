@@ -14,8 +14,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from common import decisions_path, issues_path, load_prompt, log_append, now_utc, \
-    strip_markdown_fence, ANTHROPIC_CLIENT
+from common import call_llm, decisions_path, issues_path, load_prompt, log_append, now_utc, \
+    strip_markdown_fence
 
 _MODEL = "claude-opus-4-6"
 _ACTIONABLE = {"implement", "custom"}
@@ -84,13 +84,13 @@ class Rewriter:
 
     def _apply_fix(self, source_code: str, fix_instruction: str) -> str:
         user_content = f"{source_code}\n\n---FIX---\n{fix_instruction}"
-        response = ANTHROPIC_CLIENT.messages.create(
-            model=_MODEL,
-            max_tokens=8192,
+        response_text = call_llm(
             system=self.system_prompt,
-            messages=[{"role": "user", "content": user_content}],
+            user_message=user_content,
+            max_tokens=8192,
+            model=_MODEL,
         )
-        return strip_markdown_fence(response.content[0].text)
+        return strip_markdown_fence(response_text)
 
     @staticmethod
     def _effective_fix(issue: dict[str, Any], decision: dict[str, Any]) -> str:

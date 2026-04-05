@@ -1,6 +1,6 @@
 """Tests for senior_se_triage.py."""
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 import json
 import sys
 
@@ -26,12 +26,6 @@ TRIAGE_RESPONSE = [
 ]
 
 
-def _make_fake_response(text: str) -> MagicMock:
-    resp = MagicMock()
-    resp.content = [MagicMock(text=text)]
-    return resp
-
-
 def _write_issues(tmp_path: Path, stem: str = "sample") -> Path:
     """Write issues file and return the source_path."""
     source_path = tmp_path / f"{stem}.py"
@@ -43,10 +37,7 @@ def _write_issues(tmp_path: Path, stem: str = "sample") -> Path:
 def test_triage_implement_decision_has_only_decision_fields(tmp_path: Path) -> None:
     source_path = _write_issues(tmp_path)
 
-    with patch("senior_se_triage.ANTHROPIC_CLIENT") as mock_client:
-        mock_client.messages.create.return_value = _make_fake_response(
-            json.dumps(TRIAGE_RESPONSE)
-        )
+    with patch("senior_se_triage.call_llm", return_value=json.dumps(TRIAGE_RESPONSE)):
         senior_se_triage.run(source_path)
 
     decisions_path = tmp_path / "sample.decisions.json"
@@ -72,8 +63,7 @@ def test_triage_no_sets_action_no(tmp_path: Path) -> None:
     triage_no = [{**TRIAGE_RESPONSE[0], "triage": "no",
                   "senior_se_reasoning": "Fix is unnecessary."}]
 
-    with patch("senior_se_triage.ANTHROPIC_CLIENT") as mock_client:
-        mock_client.messages.create.return_value = _make_fake_response(json.dumps(triage_no))
+    with patch("senior_se_triage.call_llm", return_value=json.dumps(triage_no)):
         senior_se_triage.run(source_path)
 
     decisions_path = tmp_path / "sample.decisions.json"
@@ -89,10 +79,7 @@ def test_triage_needs_human_sets_action(tmp_path: Path) -> None:
     triage_human = [{**TRIAGE_RESPONSE[0], "triage": "needs_human_approval",
                      "senior_se_reasoning": "Trade-off unclear."}]
 
-    with patch("senior_se_triage.ANTHROPIC_CLIENT") as mock_client:
-        mock_client.messages.create.return_value = _make_fake_response(
-            json.dumps(triage_human)
-        )
+    with patch("senior_se_triage.call_llm", return_value=json.dumps(triage_human)):
         senior_se_triage.run(source_path)
 
     decisions_path = tmp_path / "sample.decisions.json"
@@ -104,10 +91,7 @@ def test_triage_needs_human_sets_action(tmp_path: Path) -> None:
 def test_decisions_written_to_same_directory(tmp_path: Path) -> None:
     source_path = _write_issues(tmp_path, stem="mymodule")
 
-    with patch("senior_se_triage.ANTHROPIC_CLIENT") as mock_client:
-        mock_client.messages.create.return_value = _make_fake_response(
-            json.dumps(TRIAGE_RESPONSE)
-        )
+    with patch("senior_se_triage.call_llm", return_value=json.dumps(TRIAGE_RESPONSE)):
         senior_se_triage.run(source_path)
 
     decisions_path = tmp_path / "mymodule.decisions.json"
