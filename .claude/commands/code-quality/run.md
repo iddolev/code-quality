@@ -42,11 +42,14 @@ can be resumed. The file contains a JSON array of objects, each with:
 
 ```json
 [
-  { "filepath": "path/to/file.py", "status": "pending" },
-  { "filepath": "path/to/other.py", "status": "processing" },
-  { "filepath": "path/to/done.py", "status": "done" }
+  { "filepath": "path/to/file.py", "status": "pending", "timestamp": "2026-04-05T12:00:00Z" },
+  { "filepath": "path/to/other.py", "status": "processing", "timestamp": "2026-04-05T12:05:00Z" },
+  { "filepath": "path/to/done.py", "status": "done", "timestamp": "2026-04-05T12:10:00Z" }
 ]
 ```
+
+Each record includes a `timestamp` field (UTC, format `YYYY-mm-ddTHH:MM:SSZ`)
+indicating when the record was last updated.
 
 **On invocation, follow this logic:**
 
