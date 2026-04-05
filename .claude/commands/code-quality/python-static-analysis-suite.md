@@ -57,67 +57,30 @@ Run `python_static_analysis_suite.py` with two parameters: `$ARGUMENTS` and raw_
 
 Run `python_static_analysis_parse_log.py` with two parameters: raw_output_path and jsonl_path.
 
-This produces a JSON Lines file where each line is one finding with these fields:
+### Step 3: Filter and format the report
 
-- `file`: source file path
-- `line`, `col`: location
-- `tool`: which tool (ruff, pylint, pyright, bandit, radon, fixit)
-- `rule`: tool-specific rule code
-- `severity`: error / warning / suggestion
-- `description`: human-readable message
-- `rule_name`: (pylint only) the rule's kebab-case name
-- `ruff_fixable`: (ruff only) true if ruff can auto-fix
-- `fixit_autofix`: (fixit only) true if fixit can auto-fix
+Run `python_static_analysis_report.py` with two parameters: jsonl_path and output_path.
 
-### Step 3: Filter ignored items
+This filters out ignored findings and writes a formatted report with these sections:
 
-Read the JSONL file and discard findings that match ANY of these ignore rules:
+1. Summary (counts by severity and category)
+2. All findings (sorted by file, then line)
+3. Auto-fixable changes
+4. Manual review changes
+5. Unparsed tool output (if any — check the raw log for details)
+6. Uncategorized rules (if any — see below)
 
-- pylint R0903 (too-few-public-methods) — too many false positives
-- pylint C0116 (missing-function-docstring) — too many false positives
-- pylint R0902 (too-many-instance-attributes) — too many false positives
-- pylint E0401 (import-error) — false positives from relative imports
-- pyright reportMissingImports — false positives from relative imports
-- pyright reportAttributeAccessIssue where description contains
-  `Cannot access attribute "text"` — intentional behavior (raises on non-TextBlock)
-- bandit B101 (assert_used) in test files — assert is standard in tests
-- bandit B404 (blacklist) for subprocess import — too noisy, low value
-- Any finding with rule "unparsed" — parser fallback, not actionable
+Rule configuration (ignore, auto_fixable, category) is in
+`.claude/code-quality/scripts/python_static_analysis_report.yaml`.
 
-### Step 4: Write the formatted log
+### Step 4: Handle uncategorized rules
 
-Read the filtered findings and write to output_path in this format:
+If the report contains section 6 (uncategorized rules), for each listed rule:
 
-#### 1. Summary
-
-- Total findings by severity: Error / Warning / Suggestion
-- Total findings by category: (e.g. naming, formatting, security, complexity, imports, etc.)
-
-#### 2. Findings (sorted by file, then by line number)
-
-For each finding:
-```
-Line {N}: [{CATEGORY}] {SEVERITY} — {description}
-  Tool: {tool}
-  Rule: {rule}
-  Auto-fixable: Yes/No
-```
-
-A finding is "Auto-fixable: Yes" if ANY of these apply:
-- ruff_fixable is true
-- fixit_autofix is true
-- Rule is one of: C0301 (line-too-long), C0103 (invalid-name), C0411 (wrong-import-order),
-  W0611 (unused-import), W0612 (unused-variable), W1309 (f-string-without-interpolation)
-
-All other findings are "Auto-fixable: No".
-
-#### 3. Auto-fixable changes
-
-List only findings marked "Auto-fixable: Yes".
-
-#### 4. Manual review changes
-
-List all other findings.
+1. Read the rule's description from the report
+2. Decide the appropriate category, and whether it should be ignored or auto-fixable
+3. Add it to `python_static_analysis_report.yaml`
+4. Re-run step 3 to regenerate the report with updated categories
 
 ## Do the fixes
 

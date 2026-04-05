@@ -1,0 +1,169 @@
+# Rule configuration for python_static_analysis_report.py
+#
+# Each rule code maps to its properties:
+#   description:  human-readable explanation of the rule
+#   ignore:       true to discard the finding entirely
+#   auto_fixable: true if the finding can be safely auto-fixed
+#   category:     human-readable category for grouping in the report
+#
+# Rules not listed here will be flagged as "uncategorized" in the report
+# so they can be triaged and added.
+#
+# Special ignore patterns (handled in code, not in this file):
+#   - pyright reportAttributeAccessIssue with "Cannot access attribute "text""
+#   - bandit B101 in test files
+#   - bandit B404 (subprocess import)
+
+rules:
+
+  pylint:
+
+    C0103:
+      description: Invalid name doesn't conform to naming conventions
+      category: naming
+      auto_fixable: true
+
+    C0115:
+      description: Missing class docstring
+      category: documentation
+
+    C0116:
+      description: Missing function or method docstring
+      category: documentation
+      ignore: true
+
+    C0301:
+      description: Line too long
+      category: formatting
+      auto_fixable: true
+
+    C0305:
+      description: Trailing newlines
+      category: formatting
+      auto_fixable: true
+
+    C0411:
+      description: Wrong import order
+      category: imports
+      auto_fixable: true
+
+    C0413:
+      description: Import should be placed at the top of the module
+      category: imports
+
+    C0415:
+      description: Import outside toplevel
+      category: imports
+
+    E0401:
+      description: Unable to import module (false positives from relative imports)
+      category: imports
+      ignore: true
+
+    R0902:
+      description: Too many instance attributes
+      category: design
+      ignore: true
+
+    R0903:
+      description: Too few public methods
+      category: design
+      ignore: true
+
+    W0212:
+      description: Access to a protected member of a class
+      category: encapsulation
+
+    W0511:
+      description: TODO/FIXME comment found
+      category: todo
+
+    W0603:
+      description: Using the global statement
+      category: design
+
+    W0611:
+      description: Unused import
+      category: imports
+      auto_fixable: true
+
+    W0612:
+      description: Unused variable
+      category: unused-code
+      auto_fixable: true
+
+    W0613:
+      description: Unused argument
+      category: unused-code
+
+    W0718:
+      description: Catching too general exception
+      category: error-handling
+
+    W1309:
+      description: F-string without placeholders
+      category: formatting
+      auto_fixable: true
+
+    W1510:
+      description: subprocess.run without explicitly set check parameter
+      category: error-handling
+
+  pyright:
+
+    reportMissingImports:
+      description: Import could not be resolved (false positives from relative imports)
+      category: imports
+      ignore: true
+
+    reportAttributeAccessIssue:
+      description: Cannot access attribute on type
+      category: type-safety
+
+    reportOptionalMemberAccess:
+      description: Access to member on optional type without None check
+      category: type-safety
+
+  ruff:
+
+    F541:
+      description: F-string without placeholders
+      category: formatting
+
+  radon:
+
+    CC-C:
+      description: Cyclomatic complexity grade C (moderate)
+      category: complexity
+
+    CC-D:
+      description: Cyclomatic complexity grade D (high)
+      category: complexity
+
+    CC-E:
+      description: Cyclomatic complexity grade E (very high)
+      category: complexity
+
+    CC-F:
+      description: Cyclomatic complexity grade F (extreme)
+      category: complexity
+
+  fixit:
+
+    NoRedundantFString:
+      description: Redundant f-string with no placeholders
+      category: formatting
+
+  bandit:
+
+    "B603:subprocess_without_shell_equals_true":
+      description: subprocess call without shell=True
+      category: security
+
+    "B607:start_process_with_partial_path":
+      description: Starting a process with a partial executable path
+      category: security
+
+    "B310:blacklist":
+      description: Audit URL open for permitted schemes
+      category: security
