@@ -189,7 +189,6 @@ def test_call_llm_has_logging():
 
 # --- Issue-specific xfail tests (Phase 4 TDD) ---
 
-@pytest.mark.xfail(reason="issue #23: parse_llm_response returns dict or list inconsistently")
 def test_parse_llm_response_normalizes_single_object_to_list():
     """parse_llm_response should always return list[dict] | None, never a bare dict."""
     # A single JSON object (not wrapped in an array) — this is what the LLM

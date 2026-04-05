@@ -285,10 +285,12 @@ def _extract_json(text: str) -> str | None:
     return unwrapped[matches[-1].start():] if matches else None
 
 
-def parse_llm_response(response: str, *, label: str = "") -> dict | list[dict[str, Any]] | None:
+def parse_llm_response(response: str, *, label: str = "") -> list[dict[str, Any]] | None:
     """Parse Claude's JSON response.
 
-    Returns the parsed dict/list, or None on parse failure.
+    Returns the parsed list[dict], or None on parse failure.
+    If the parsed result is a single dict, it is wrapped in a list so callers
+    always receive list[dict] | None.
     Empty containers ({} or []) are returned as-is — callers decide what empty means.
     """
     prefix = f"[{label}] " if label else ""
@@ -297,7 +299,10 @@ def parse_llm_response(response: str, *, label: str = "") -> dict | list[dict[st
         print(f"Warning: {prefix}no JSON found in Claude response:\n{response[:200]}", file=sys.stderr)
         return None
     try:
-        return json.loads(json_str)
+        parsed = json.loads(json_str)
+        if isinstance(parsed, dict):
+            return [parsed]
+        return parsed
     except json.JSONDecodeError:
         print(f"Warning: {prefix}could not parse extracted JSON:\n{json_str[:200]}", file=sys.stderr)
         return None
