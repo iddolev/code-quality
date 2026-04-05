@@ -101,9 +101,9 @@ def build_prompt(rule: dict, code: str) -> str:
     prompt_template = _PROMPT_TEMPLATE.replace("#<N>", f"#<{rule['id']}>")
     return (
         f"{prompt_template}\n\n"
-        f"---\n\n"
+        "---\n\n"
         f"## Rule {rule['body'][3:]}\n\n"
-        f"---\n\n"
+        "---\n\n"
         f"## Code:\n\n```\n{code}\n```"
     )
 

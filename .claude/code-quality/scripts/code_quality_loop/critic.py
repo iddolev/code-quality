@@ -76,7 +76,7 @@ class CodeCritic:
         parts = [self.external_ctx, self.source_code] if self.external_ctx else [self.source_code]
         if known_unresolved:
             parts.append(
-                f"---KNOWN ISSUES (do not re-report these)---\n"
+                "---KNOWN ISSUES (do not re-report these)---\n"
                 f"{json.dumps(known_unresolved, indent=2)}"
             )
         return "\n\n".join(parts)
@@ -106,9 +106,9 @@ class CodeCritic:
         # "other" run: all types visible, find only uncategorised issues
         rule_section = (
             f"## Issue types\n\n{self.all_types_text}\n\n"
-            f"Report ONLY issues that do NOT fit any of the types listed above. "
-            f"Use type 'other' for these. "
-            f"If every issue already fits an existing type, return []."
+            "Report ONLY issues that do NOT fit any of the types listed above. "
+            "Use type 'other' for these. "
+            "If every issue already fits an existing type, return []."
         )
         examples = format_examples_for_type(self.issue_examples, "other")
         system_prompt = (

@@ -80,7 +80,8 @@ def call_llm(*, system: str, user_message: str, max_tokens: int | None,
         else:
             raise ValueError(f"Unknown LLM_BACKEND: {backend!r} (expected 'api' or 'cli')")
         elapsed = time.monotonic() - start
-        logger.info("LLM call succeeded: model=%s backend=%s elapsed=%.1fs", model, backend, elapsed)
+        logger.info("LLM call succeeded: model=%s backend=%s elapsed=%.1fs",
+                     model, backend, elapsed)
         return result
     except Exception:
         elapsed = time.monotonic() - start
@@ -306,5 +307,6 @@ def parse_llm_response(response: str, *, label: str = "") -> list[dict[str, Any]
             return [parsed]
         return parsed
     except json.JSONDecodeError:
-        print(f"Warning: {prefix}could not parse extracted JSON:\n{json_str[:200]}", file=sys.stderr)
+        print(f"Warning: {prefix}could not parse extracted JSON:\n{json_str[:200]}",
+              file=sys.stderr)
         return None

@@ -311,7 +311,7 @@ class TestIssue27SubprocessEncodingError:
     @pytest.mark.xfail(reason="issue #27: subprocess run inherits no encoding-error policy")
     @patch("python_static_analysis_suite.subprocess.run")
     def test_subprocess_uses_error_replacement(self, mock_run):
-        runner, buf = _make_runner()
+        runner, _buf = _make_runner()
         # Verify subprocess.run is called with errors= parameter
         runner._run_tool(Path("f.py"), ("ruff", "check", suite.REPLACE_PATH))
         call_kwargs = mock_run.call_args[1] if mock_run.call_args[1] else {}

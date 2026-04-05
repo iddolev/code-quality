@@ -55,10 +55,27 @@ rules:
       description: Import outside toplevel
       category: imports
 
+    E0011:
+      description: Unrecognized file option
+      category: configuration
+      ignore: true
+
     E0401:
       description: Unable to import module (false positives from relative imports)
       category: imports
       ignore: true
+
+    R0912:
+      description: Too many branches
+      category: complexity
+
+    R0914:
+      description: Too many local variables
+      category: complexity
+
+    R0915:
+      description: Too many statements
+      category: complexity
 
     R0902:
       description: Too many instance attributes
@@ -125,6 +142,11 @@ rules:
       category: type-safety
 
   ruff:
+
+    E741:
+      description: Ambiguous variable name
+      category: naming
+      auto_fixable: true
 
     F541:
       description: F-string without placeholders

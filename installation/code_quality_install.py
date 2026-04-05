@@ -237,7 +237,7 @@ def update_gitignore(project_dir: Path, *, dry_run: bool) -> None:
 
     new_lines = content_lines[: last_idx + 1] + missing + content_lines[last_idx + 1:]
     gitignore_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
-    print(f"  📄 Updated .gitignore")
+    print("  📄 Updated .gitignore")
 
 
 _VERSION_RE = re.compile(r"^version\s*:")
@@ -405,7 +405,7 @@ def main() -> None:
         print()
         print(f"🏁 Code Quality v{new_version} installed successfully.")
         warn(f"⚠️ IMPORTANT NOTE: You should commit {CQ_VERSION_FILEPATH} to your repo, "
-             f"to remember the relevant Code Quality info.")
+             "to remember the relevant Code Quality info.")
 
 
 if __name__ == "__main__":

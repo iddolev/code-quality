@@ -383,7 +383,7 @@ def _split_sections(content: str) -> list[tuple[str, list[tuple[str, str]]]]:
     file_opens = list(_FILE_OPEN_RE.finditer(content))
     file_closes = list(_FILE_CLOSE_RE.finditer(content))
 
-    for i, fo in enumerate(file_opens):
+    for _i, fo in enumerate(file_opens):
         file_id = fo.group(1)
         block_start = fo.end()
         # Find the matching </file> (the next one after this open)
@@ -398,7 +398,7 @@ def _split_sections(content: str) -> list[tuple[str, list[tuple[str, str]]]]:
         tool_opens = list(_TOOL_OPEN_RE.finditer(file_body))
         tool_closes = list(_TOOL_CLOSE_RE.finditer(file_body))
 
-        for j, to in enumerate(tool_opens):
+        for _j, to in enumerate(tool_opens):
             tool_id = to.group(1)
             body_start = to.end()
             # Find matching </tool>
@@ -415,21 +415,21 @@ def _split_sections(content: str) -> list[tuple[str, list[tuple[str, str]]]]:
 
 def _collect_unparsed(lines: list[str], file_id: str, tool_id: str) -> list[dict]:
     """Collect non-noise lines that no parser matched as a single unparsed finding."""
-    remaining = [l.strip() for l in lines if not _is_noise(l)]
+    remaining = [ln.strip() for ln in lines if not _is_noise(ln)]
     # Also filter pyright summary lines like "8 errors, 0 warnings..."
-    remaining = [l for l in remaining
-                 if not re.match(r"^\d+ errors?, \d+ warnings?, \d+ informations?$", l)]
+    remaining = [ln for ln in remaining
+                 if not re.match(r"^\d+ errors?, \d+ warnings?, \d+ informations?$", ln)]
     # Filter pyright file-path-only lines (header before findings)
-    remaining = [l for l in remaining if not re.match(r"^[a-zA-Z]:\\", l) or " - " in l]
+    remaining = [ln for ln in remaining if not re.match(r"^[a-zA-Z]:\\", ln) or " - " in ln]
     # Filter pyright continuation lines (indented extra context for multi-line errors)
-    remaining = [l for l in remaining
-                 if not re.match(r'^(Attribute |Type "|")', l)]
+    remaining = [ln for ln in remaining
+                 if not re.match(r'^(Attribute |Type "|")', ln)]
     # Filter ruff context lines (line numbers with |)
-    remaining = [l for l in remaining if not re.match(r"^\d+\s*\|", l)]
+    remaining = [ln for ln in remaining if not re.match(r"^\d+\s*\|", ln)]
     # Filter ruff pointer lines (just | and ^)
-    remaining = [l for l in remaining if not re.match(r"^[|\s^]+$", l)]
+    remaining = [ln for ln in remaining if not re.match(r"^[|\s^]+$", ln)]
     # Filter bandit source code context lines (line_num\tcode)
-    remaining = [l for l in remaining if not re.match(r"^\d+\t", l)]
+    remaining = [ln for ln in remaining if not re.match(r"^\d+\t", ln)]
 
     if remaining:
         return [{

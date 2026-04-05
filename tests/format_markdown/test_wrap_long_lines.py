@@ -144,11 +144,13 @@ class TestMultipleUrlLine:
         # Removing the longest URL still leaves the other URL + prose > 120
         longest = max(url1, url2, key=len)
         without_longest = text.replace(longest, "", 1)
-        assert len(without_longest) > MAX_LINE_LENGTH, "test setup: removing longest URL must still exceed limit"
+        assert len(without_longest) > MAX_LINE_LENGTH, \
+            "test setup: removing longest URL must still exceed limit"
         # But removing ALL URLs leaves short text
         import re
         without_all = re.sub(r"https?://\S+", "", text)
-        assert len(without_all) <= MAX_LINE_LENGTH, "test setup: removing all URLs must be under limit"
+        assert len(without_all) <= MAX_LINE_LENGTH, \
+            "test setup: removing all URLs must be under limit"
         result = _rule.apply(text)
         assert result == text
 
@@ -162,9 +164,11 @@ class TestListMarkerPreserved:
         item = "  1. " + _long()
         result = _rule.apply(item)
         first_line = result.splitlines()[0]
-        assert first_line.startswith("  1. "), f"Expected '  1. ' prefix, got {repr(first_line[:10])}"
+        assert first_line.startswith("  1. "), \
+            f"Expected '  1. ' prefix, got {repr(first_line[:10])}"
         # Should not have doubled indent
-        assert not first_line.startswith("    1."), f"First line has doubled indent: {repr(first_line[:10])}"
+        assert not first_line.startswith("    1."), \
+            f"First line has doubled indent: {repr(first_line[:10])}"
 
     def test_indented_bullet_preserves_marker(self):
         item = "  - " + _long()
@@ -227,5 +231,3 @@ class TestBlockquoteWrapping:
         for line in result.splitlines():
             assert line.startswith(">> "), \
                 f"Nested blockquote continuation missing '>> ' prefix: {repr(line[:10])}"
-
-
