@@ -9,19 +9,19 @@ This command will run code quality checks on the python file or folder `$ARGUMEN
 
 ## Preparation
 
-First check if all tools are installed by running 
+First check if all tools are installed by following the instructions in
+`.claude/code-quality/scripts/install-static-analysis-tools.md` with `--missing` mode.
 
-```bash
-python .claude/code-quality/scripts/install_static_analysis_tools.py --missing
-```
-
-If the output is "all installed", proceed to the Run instructions.
+If the result is "all installed", proceed to the Run instructions.
 
 If some tools are missing, tell the user which tools need to be installed and ask whether they want to:
 
 1. Install the missing tools and then run the suite
 2. Install the missing tools without running the suite
 3. Skip installation and only run with whatever tools are already installed
+
+If the user chooses to install, follow the install mode instructions in
+`.claude/code-quality/scripts/install-static-analysis-tools.md`.
 
 ## Run instructions
 

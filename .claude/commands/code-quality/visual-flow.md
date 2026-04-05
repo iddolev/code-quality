@@ -1,9 +1,24 @@
 ---
 description: "Apply visual flow guidelines to improve code structure and readability"
-argument-hint: "<file-or-folder (optional)>"
+argument-hint: "<file-or-folder (optional)> or 'all' for all code files"
 ---
 
-- If `$ARGUMENTS` is empty, consider it as if it was '.'
+- If `$ARGUMENTS` is empty, ask the user what they want to run on:
+  - A specific file path
+  - A specific folder path
+  - All code files in the repository
+
+- If the user chooses (or `$ARGUMENTS` is) `all`, run on every code file in the
+  repository, excluding files inside `sandbox/` and files excluded by `.gitignore`.
+  To collect the file list, run:
+
+  ```bash
+  git ls-files
+  ```
+
+  Then filter to code extensions (.py, .js, .ts, .tsx, .jsx, .java, .kt, .go,
+  .rs, .rb, .c, .cpp, .h, .hpp, .cs, .swift, .scala, .sh, .bash) and filter out
+  any paths that start with `sandbox/`. Process each file one at a time.
 - If `$ARGUMENTS` contains `--full`, add `--full` to the script invocation and remove it from the target path.
 - If the target is a single file, run the script on it directly:
 
