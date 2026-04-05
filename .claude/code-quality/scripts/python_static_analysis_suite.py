@@ -1,4 +1,4 @@
-"""Run existing static analysis tools on a Python file or folder.
+"""Run file-level static analysis tools on a Python file or folder.
 
 Usage example:
     python python_static_analysis_suite.py src/ report.log
@@ -7,16 +7,14 @@ Usage example:
 Output format:
     Results are written as a structured XML-like log.  Each Python file is
     wrapped in a <file> element containing one <tool> element per tool run.
-    Folder-level tools (e.g. deptry, pip-audit) appear after all per-file
-    sections.  A <missing_tools_summary> block lists any tools that could not
-    be found, and a <stats> block records timing information.
+    A <missing_tools_summary> block lists any tools that could not be found,
+    and a <stats> block records timing information.
 
 Tools run per file:
     ruff (check), pylint, pyright, radon (cyclomatic complexity),
     bandit, fixit (lint).
 
-Tools run per folder:
-    deptry, pip-audit.
+Project-level tools (deptry, pip-audit) live in python_project_static_analysis.py.
 """
 
 import subprocess
@@ -37,12 +35,6 @@ FILE_TOOLS = [
     ("bandit", REPLACE_PATH),
     # ("vulture", REPLACE_PATH),  -- commented out because produced many false positives
     ("fixit", "lint", REPLACE_PATH),
-]
-
-FOLDER_TOOLS = [
-    ("deptry", REPLACE_PATH),
-    # pip-audit doesn't need a target as it checks venv
-    ("pip-audit",),
 ]
 
 TAG_ID = 'id'
@@ -126,16 +118,8 @@ class StaticAnalysisToolsRunner:
                 if not any(part in EXCLUDED_DIRS
                            for part in item.relative_to(folder).parent.parts)]
 
-    def _write_skipped_folder_tools_note(self) -> None:
-        """Log a note that folder-level tools were skipped in single-file mode."""
-        skipped = [cmd[0] for cmd in FOLDER_TOOLS]
-        self._log_file.write(
-            f"<!-- NOTE: Folder-level tools skipped in single-file mode:"
-            f" {', '.join(skipped)} -->\n\n"
-        )
-
     def _run(self, path: Path) -> None:
-        """Run file-level and folder-level checks, dispatching by path type."""
+        """Run file-level checks, dispatching by path type."""
         self._start_time = datetime.now()
         if path.is_file():
             if path.suffix.lower() != ".py":
@@ -144,7 +128,6 @@ class StaticAnalysisToolsRunner:
             self._log_file.write(f'<{FILE_TAG} {TAG_ID}="{path}">\n')
             self._check_file(path)
             self._log_file.write(f"</{FILE_TAG}>  <!-- {path} -->\n\n")
-            self._write_skipped_folder_tools_note()
         elif path.is_dir():
             py_files = self._collect_python_files(path)
             if not py_files:
@@ -155,8 +138,6 @@ class StaticAnalysisToolsRunner:
                 self._log_file.write(f'<{FILE_TAG} {TAG_ID}="{py_file}">\n')
                 self._check_file(py_file)
                 self._log_file.write(f"</{FILE_TAG}>  <!-- {py_file} -->\n\n")
-            for cmd_template in FOLDER_TOOLS:
-                self._run_tool(path, cmd_template)
         else:
             print(f'Error: "{path}" is not a regular file or directory'
                   f' (type: {type(path)}, exists: {path.exists()}).')

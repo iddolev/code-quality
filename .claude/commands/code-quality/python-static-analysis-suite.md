@@ -46,81 +46,96 @@ If the folder `tmp/python_static_analysis_suite` does not exist, create it.
 
 Let timestamp = the current date and time in format YYYYMMDD_hhmmss.
 Let raw_output_path = tmp/python_static_analysis_suite/<filename>_<timestamp>.raw.log.
+Let jsonl_path = tmp/python_static_analysis_suite/<filename>_<timestamp>.jsonl.
 Let output_path = tmp/python_static_analysis_suite/<filename>_<timestamp>.log.
 
-Run `python_static_analysis_suite.py` and give it two input parameters:`$ARGUMENTS` and raw_output_path.
-Read the output and convert to the following format in output_path:
+### Step 1: Run the tools
 
-## Output format
+Run `python_static_analysis_suite.py` with two parameters: `$ARGUMENTS` and raw_output_path.
 
-### 1. Summary
+### Step 2: Parse the raw output
+
+Run `python_static_analysis_parse_log.py` with two parameters: raw_output_path and jsonl_path.
+
+This produces a JSON Lines file where each line is one finding with these fields:
+
+- `file`: source file path
+- `line`, `col`: location
+- `tool`: which tool (ruff, pylint, pyright, bandit, radon, fixit)
+- `rule`: tool-specific rule code
+- `severity`: error / warning / suggestion
+- `description`: human-readable message
+- `rule_name`: (pylint only) the rule's kebab-case name
+- `ruff_fixable`: (ruff only) true if ruff can auto-fix
+- `fixit_autofix`: (fixit only) true if fixit can auto-fix
+
+### Step 3: Filter ignored items
+
+Read the JSONL file and discard findings that match ANY of these ignore rules:
+
+- pylint R0903 (too-few-public-methods) — too many false positives
+- pylint C0116 (missing-function-docstring) — too many false positives
+- pylint R0902 (too-many-instance-attributes) — too many false positives
+- pylint E0401 (import-error) — false positives from relative imports
+- pyright reportMissingImports — false positives from relative imports
+- pyright reportAttributeAccessIssue where description contains
+  `Cannot access attribute "text"` — intentional behavior (raises on non-TextBlock)
+- bandit B101 (assert_used) in test files — assert is standard in tests
+- bandit B404 (blacklist) for subprocess import — too noisy, low value
+- Any finding with rule "unparsed" — parser fallback, not actionable
+
+### Step 4: Write the formatted log
+
+Read the filtered findings and write to output_path in this format:
+
+#### 1. Summary
 
 - Total findings by severity: Error / Warning / Suggestion
-- Total findings by category: (e.g. naming, comments, formatting, design, encapsulation, etc.)
+- Total findings by category: (e.g. naming, formatting, security, complexity, imports, etc.)
 
-### 2. Findings (sorted by line number)
+#### 2. Findings (sorted by file, then by line number)
 
 For each finding:
 ```
 Line {N}: [{CATEGORY}] {SEVERITY} — {description}
-  Current: {what the code looks like now}
-  Suggested: {what it should look like}
-  Tool: {which tool this comes from} 
-  Rule: {which tool guideline this comes from}
-  Auto-fixable: Yes/No -- see instructions below
+  Tool: {tool}
+  Rule: {rule}
+  Auto-fixable: Yes/No
 ```
 
-Auto-fixable should be "Yes" on these issues, (and "No" otherwise)
+A finding is "Auto-fixable: Yes" if ANY of these apply:
+- ruff_fixable is true
+- fixit_autofix is true
+- Rule is one of: C0301 (line-too-long), C0103 (invalid-name), C0411 (wrong-import-order),
+  W0611 (unused-import), W0612 (unused-variable), W1309 (f-string-without-interpolation)
 
-- Comment placement moves
-- Adding missing docstrings and comments
-- Method reordering within classes
-- Line split / formatting fixes, e.g.: C0301 (line-too-long)
-- C0103 (invalid-name)
-- C0411 (wrong-import-order)
-- W0611 (unused-import)
-- W0612 (unused-variable)
-- W1309 (f-string-without-interpolation)
-- Adding missing `else: raise NotImplementedError(...)` (simple cases only)
+All other findings are "Auto-fixable: No".
 
-### 3. Auto-fixable changes
+#### 3. Auto-fixable changes
 
-List only the changes that are marked as "Auto-fixable: Yes".
+List only findings marked "Auto-fixable: Yes".
 
-### 4. Manual approval changes
+#### 4. Manual review changes
 
-List all the other items not included in section 3.
-
-## Ignore unwanted items
-
-Now that you wrote to the log file, 
-do a final pass on the log file, and remove from it:
-
-- Any item that has PEP 257 / D102 on a private function
-- Any item of PEP 257 / D103 on the `main()` function.
-- Any item of PEP 257 / D401 on a boolean function.
-- Any item of pylint R0903 (too-few-public-methods)        (produces too many false positives)
-- Any item of pylint C0116 (missing-function-docstring)    (produces too many false positives)
-- Any item of pylint R0902 (too-many-instance-attributes)  (produces too many false positives)
-- Any item of pyright [TYPE SAFETY] "Error — Cannot access attribute "text" on non-TextBlock content types"  (because
-  the intended behavior is raising exception when returned content is not a TextBlock)
+List all other findings.
 
 ## Do the fixes
 
-1. Use AskUserQuestion to ask the user whether to apply the safe fixes (from section 3), and act accordingly.
-2. [TBD: Don't do this yet, skip. 
-   For each item in section 4, a suggested edit should be proposed, showing the diff to the user 
-   and using AskUserQuestion to ask the user whether to apply it, and act accordingly, 
-   but this must be done in tandem with first creating comprehensive tests that are specific to verifying 
-   that the change to the code doesn't change anything semantically. 
+1. Use AskUserQuestion to ask the user whether to apply the safe fixes (from section 3),
+   and act accordingly.
+2. [TBD: Don't do this yet, skip.
+   For each item in section 4, a suggested edit should be proposed, showing the diff to the user
+   and using AskUserQuestion to ask the user whether to apply it, and act accordingly,
+   but this must be done in tandem with first creating comprehensive tests that are specific to verifying
+   that the change to the code doesn't change anything semantically.
    Without such testing we cannot be sure the change is correct.
    Especially for complex changes]
 
 ## CRITICAL SAFETY RULE
 
-CRITICAL: The guidelines instruct about cosmetic/structural changes only! 
-You MUST ALWAYS preserve the exact semantic behavior of the original code. 
-If a modification requires changing logic, control flow, 
-return values, side effects, error handling behavior, or API contracts - 
+CRITICAL: The guidelines instruct about cosmetic/structural changes only!
+You MUST ALWAYS preserve the exact semantic behavior of the original code.
+If a modification requires changing logic, control flow,
+return values, side effects, error handling behavior, or API contracts -
 don't actually do it but instead list it as a SUGGESTION and not as an auto-fix.
 When in doubt, leave the code unchanged, and ask the user.
