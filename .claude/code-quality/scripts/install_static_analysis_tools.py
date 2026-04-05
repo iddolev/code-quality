@@ -1,5 +1,6 @@
 """Install code quality tools: ruff, pylint, pyright, vulture, radon, bandit, deptry, pip-audit."""
 
+import argparse
 import subprocess
 import sys
 
@@ -36,6 +37,18 @@ def install(tool: str) -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Install code quality tools.")
+    parser.add_argument("--missing", action="store_true", help="Print missing tools and exit.")
+    args = parser.parse_args()
+
+    if args.missing:
+        missing = [tool for tool in TOOLS if not get_version(tool)]
+        if missing:
+            print("need installation: " + ", ".join(missing))
+        else:
+            print("all installed")
+        return
+
     for tool in TOOLS:
         print(f"[{tool}]")
         version = get_version(tool)

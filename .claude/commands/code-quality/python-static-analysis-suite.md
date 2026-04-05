@@ -1,19 +1,49 @@
 ---
 description: "Run python code quality tool suite on file or folder"
-argument-hint: <file or folder path>
+argument-hint: "<file-or-folder (optional)> or 'all' for all python files"
 ---
 
 # Code Quality Review
 
-Run code quality checks on the python file or folder `$ARGUMENTS`.
+This command will run code quality checks on the python file or folder `$ARGUMENTS`.
+
+## Preparation
+
+First check if all tools are installed by running 
+
+```bash
+python .claude/code-quality/scripts/install_static_analysis_tools.py --missing
+```
+
+If the output is "all installed", proceed to the Run instructions.
+
+If some tools are missing, tell the user which tools need to be installed and ask whether they want to:
+
+1. Install the missing tools and then run the suite
+2. Install the missing tools without running the suite
+3. Skip installation and only run with whatever tools are already installed
 
 ## Run instructions
 
-If `$ARGUMENTS` is empty, issue an error message and STOP.
+If `$ARGUMENTS` is empty, ask the user what they want to run on:
+- A specific file path
+- A specific folder path
+- All Python files in the repository
+
+If the user chooses (or `$ARGUMENTS` is) `all`, run on every `.py` file in the
+repository, excluding files inside `sandbox/` and files excluded by `.gitignore`.
+To collect the file list, run:
+
+```bash
+git ls-files '*.py'
+```
+
+Then filter out any paths that start with `sandbox/`. Process each file one at a
+time, running the full workflow on each before moving to the next.
 
 If the folder `tmp/python_static_analysis_suite` does not exist, create it.
 
-Let timestamp = the current date and time in format YYYYMMDDhhmmss.
+Let timestamp = the current date and time in format YYYYMMDD_hhmmss.
 Let raw_output_path = tmp/python_static_analysis_suite/<filename>_<timestamp>.raw.log.
 Let output_path = tmp/python_static_analysis_suite/<filename>_<timestamp>.log.
 

@@ -57,11 +57,11 @@ LINE_INDENT = " " * 4
 class StaticAnalysisToolsRunner:
     """Runs code quality tools and writes results to a log file."""
 
-    def __init__(self, log_file: TextIOWrapper):
-        self._log_file = log_file
+    def __init__(self):
         self._missing_tools: list[str] = []
         self._tool_times: dict[str, float] = defaultdict(float)
         self._start_time: datetime | None = None
+        self._log_file = None
 
     @staticmethod
     def _cmd_from_template(path: Path, cmd_template: tuple[str, ...]) -> list[str]:
@@ -130,7 +130,7 @@ class StaticAnalysisToolsRunner:
             f" {', '.join(skipped)} -->\n\n"
         )
 
-    def run(self, path: Path) -> None:
+    def _run(self, path: Path) -> None:
         """Run file-level and folder-level checks, dispatching by path type."""
         self._start_time = datetime.now()
         if path.is_file():
@@ -158,7 +158,7 @@ class StaticAnalysisToolsRunner:
                   f' (type: {type(path)}, exists: {path.exists()}).')
             sys.exit(1)
 
-    def write_missing_tools_summary(self) -> None:
+    def _write_missing_tools_summary(self) -> None:
         """Write a summary of tools that were not found."""
         if not self._missing_tools:
             return
@@ -167,7 +167,7 @@ class StaticAnalysisToolsRunner:
             self._log_file.write(f"  - {tool}\n")
         self._log_file.write(f"</{MISSING_TOOLS_TAG}>\n")
 
-    def write_stats(self) -> None:
+    def _write_stats(self) -> None:
         """Write timing statistics for the report."""
         self._log_file.write(f"<{STATS_TAG}>\n")
         if self._start_time:
@@ -181,6 +181,13 @@ class StaticAnalysisToolsRunner:
             total += elapsed
         self._log_file.write(f"{LINE_INDENT}total: {total:.2f}s\n")
         self._log_file.write(f"</{STATS_TAG}>\n")
+
+    def run(self, path: Path) -> None:
+        with open(path, "w", encoding="utf-8") as log_file:
+            self._log_file = log_file
+            self._run(path)
+            self._write_missing_tools_summary()
+            self._write_stats()
 
 
 def main() -> None:
@@ -199,11 +206,7 @@ def main() -> None:
 
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(log_path, "w", encoding="utf-8") as log_file:
-        runner = StaticAnalysisToolsRunner(log_file)
-        runner.run(path)
-        runner.write_missing_tools_summary()
-        runner.write_stats()
+    StaticAnalysisToolsRunner(log_path).run(path)
 
     print(f"Report written to {log_path}")
 

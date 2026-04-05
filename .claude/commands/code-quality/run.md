@@ -1,6 +1,6 @@
 ---
 description: "Apply a feedback loop that asks LLM to find issues"
-argument-hint: "<file-or-folder (optional)> or all for all python files"
+argument-hint: "<file-or-folder (optional)> or 'all' for all python files"
 ---
 
 # Code Quality Loop — Claude Workflow
