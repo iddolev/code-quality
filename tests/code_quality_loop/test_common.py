@@ -185,3 +185,18 @@ def test_call_llm_has_logging():
     import common
     source = inspect.getsource(common.call_llm)
     assert "log" in source.lower()
+
+
+# --- Issue-specific xfail tests (Phase 4 TDD) ---
+
+@pytest.mark.xfail(reason="issue #23: parse_llm_response returns dict or list inconsistently")
+def test_parse_llm_response_normalizes_single_object_to_list():
+    """parse_llm_response should always return list[dict] | None, never a bare dict."""
+    # A single JSON object (not wrapped in an array) — this is what the LLM
+    # sometimes returns.  The fix should wrap it into [dict].
+    response = '{"fingerprint": "test-issue", "severity": "LOW"}'
+    result = parse_llm_response(response)
+    assert result is not None
+    assert isinstance(result, list), f"Expected list, got {type(result).__name__}"
+    assert len(result) == 1
+    assert result[0]["fingerprint"] == "test-issue"
