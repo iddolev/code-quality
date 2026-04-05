@@ -16,7 +16,7 @@ import yaml
 from dotenv import load_dotenv
 
 
-load_dotenv(Path(__file__).parent.parent.parent / ".env")
+load_dotenv(Path(__file__).resolve().parents[4] / ".env")
 
 # LLM_BACKEND controls how we call Claude:
 #   "api" (default) — uses the Anthropic Python SDK (requires ANTHROPIC_API_KEY, uses API credits)
@@ -28,9 +28,12 @@ _anthropic_client = None
 if LLM_BACKEND == "api":
     import anthropic
     if not os.environ.get("ANTHROPIC_API_KEY"):
-        print("Error: ANTHROPIC_API_KEY not set in environment", file=sys.stderr)
-        sys.exit(1)
-    _anthropic_client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+        if "pytest" not in sys.modules:
+            # Skip fatal exit during tests — tests may mock the client or use the "cli" backend
+            print("Error: ANTHROPIC_API_KEY not set in environment", file=sys.stderr)
+            sys.exit(1)
+    else:
+        _anthropic_client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
 
 # Map full model names to short aliases accepted by `claude --model`.
