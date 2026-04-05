@@ -4,10 +4,12 @@ For each rule in the guidelines file, sends the code to Claude with the
 corresponding prompt and scope, then applies the returned patch.
 
 Usage:
-    python .claude/code-quality/scripts/visual_flow/visual_flow_applier.py <guidelines_file> <source_file>
+    python .claude/code-quality/scripts/visual_flow/visual_flow_applier.py \
+        <guidelines_file> <source_file>
 
 Example:
-    python .claude/code-quality/scripts/visual_flow/visual_flow_applier.py .claude/code-quality/guidelines/visual_flow.md src/app.py
+    python .claude/code-quality/scripts/visual_flow/visual_flow_applier.py \
+        .claude/code-quality/guidelines/visual_flow.md src/app.py
 """
 
 from __future__ import annotations

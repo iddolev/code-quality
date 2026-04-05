@@ -24,7 +24,6 @@ import sys
 import time
 from collections import defaultdict
 from datetime import datetime
-from io import TextIOWrapper
 from pathlib import Path
 
 EXCLUDED_DIRS = {"venv", "sandbox", "tmp", "__pycache__", ".git"}
@@ -79,14 +78,18 @@ class StaticAnalysisToolsRunner:
         self._log_file.write(f'{LINE_INDENT}<{TOOL_TAG} {TAG_ID}="{cmd[0]}">\n')
         start = time.monotonic()
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=TOOL_TIMEOUT_SECONDS)
+            result = subprocess.run(
+                cmd, capture_output=True, text=True,
+                timeout=TOOL_TIMEOUT_SECONDS)
             self._write_result(result)
         except FileNotFoundError as e:
-            self._log_file.write(f"{LINE_INDENT * 2}ERROR: {cmd[0]} is not installed. ({e})\n")
+            self._log_file.write(
+                f"{LINE_INDENT * 2}ERROR: {cmd[0]} is not installed. ({e})\n")
             self._missing_tools.append(cmd[0])
         except subprocess.TimeoutExpired as e:
             self._log_file.write(
-                f"{LINE_INDENT * 2}ERROR: {cmd[0]} timed out after {TOOL_TIMEOUT_SECONDS} seconds. ({e})\n"
+                f"{LINE_INDENT * 2}ERROR: {cmd[0]} timed out after "
+                f"{TOOL_TIMEOUT_SECONDS} seconds. ({e})\n"
             )
             if e.stdout:
                 self._log_file.write(f"{LINE_INDENT * 2}Partial stdout: {e.stdout}\n")
@@ -119,8 +122,8 @@ class StaticAnalysisToolsRunner:
         """Recursively collect .py files, skipping excluded directories."""
         return [item
                 for item in sorted(folder.rglob("*.py"))
+                # Check only parent directory names (not the filename)
                 if not any(part in EXCLUDED_DIRS
-                           # Check only parent directory names (not the filename) against EXCLUDED_DIRS
                            for part in item.relative_to(folder).parent.parts)]
 
     def _write_skipped_folder_tools_note(self) -> None:
@@ -192,7 +195,7 @@ class StaticAnalysisToolsRunner:
 
 
 def main() -> None:
-    """Parse CLI arguments and run the static analysis suite, writing results to the specified output file."""
+    """Parse CLI arguments and run the static analysis suite."""
     if len(sys.argv) < 3:
         print("Error: Missing arguments.")
         print("Usage: python python_static_analysis_suite.py <file_or_folder> <output_filepath>")

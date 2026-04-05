@@ -39,24 +39,24 @@ DEFAULT_MAX_TOKENS = 4096
 DEFAULT_MODEL = os.environ.get("LLM_DEFAULT_MODEL", "claude-opus-4-6")
 _CLI_TIMEOUT = int(os.environ.get("LLM_CLI_TIMEOUT", "300"))
 
-_anthropic_client = None
-_anthropic_init_done = False
+_ANTHROPIC_CLIENT = None
+_ANTHROPIC_INIT_DONE = False
 
 
 def _get_anthropic_client():
     """Return the Anthropic client, initializing lazily on first call."""
-    global _anthropic_client, _anthropic_init_done
-    if _anthropic_init_done:
-        return _anthropic_client
-    _anthropic_init_done = True
+    global _ANTHROPIC_CLIENT, _ANTHROPIC_INIT_DONE
+    if _ANTHROPIC_INIT_DONE:
+        return _ANTHROPIC_CLIENT
+    _ANTHROPIC_INIT_DONE = True
     if LLM_BACKEND != "api":
         return None
     import anthropic
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         return None
-    _anthropic_client = anthropic.Anthropic(api_key=api_key)
-    return _anthropic_client
+    _ANTHROPIC_CLIENT = anthropic.Anthropic(api_key=api_key)
+    return _ANTHROPIC_CLIENT
 
 
 def call_llm(*, system: str, user_message: str, max_tokens: int | None,
@@ -75,7 +75,8 @@ def call_llm(*, system: str, user_message: str, max_tokens: int | None,
         elif backend == "cli":
             if max_tokens:
                 raise ValueError("max_tokens is not supported with the CLI backend")
-            result = _call_via_cli(system, user_message, model)
+            result = _call_via_cli(system, user_message,
+                                   model)
         else:
             raise ValueError(f"Unknown LLM_BACKEND: {backend!r} (expected 'api' or 'cli')")
         elapsed = time.monotonic() - start
@@ -290,13 +291,14 @@ def parse_llm_response(response: str, *, label: str = "") -> list[dict[str, Any]
 
     Returns the parsed list[dict], or None on parse failure.
     If the parsed result is a single dict, it is wrapped in a list so callers
-    always receive list[dict] | None.
-    Empty containers ({} or []) are returned as-is — callers decide what empty means.
+    always receive list[dict] | None.  Empty containers ({} or [])
+    are returned as-is — callers decide what empty means.
     """
     prefix = f"[{label}] " if label else ""
     json_str = _extract_json(response)
     if not json_str:
-        print(f"Warning: {prefix}no JSON found in Claude response:\n{response[:200]}", file=sys.stderr)
+        print(f"Warning: {prefix}no JSON found in Claude response:\n"
+              f"{response[:200]}", file=sys.stderr)
         return None
     try:
         parsed = json.loads(json_str)

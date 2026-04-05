@@ -199,10 +199,10 @@ def update_gitignore(project_dir: Path, *, dry_run: bool) -> None:
 
     if not gitignore_path.exists():
         if dry_run:
-            print(f"  [dry-run] Would create .gitignore with Code Quality entries")
+            print("  [dry-run] Would create .gitignore with Code Quality entries")
             return
         gitignore_path.write_text(new_section, encoding="utf-8")
-        print(f"  📄 Created .gitignore")
+        print("  📄 Created .gitignore")
         return
 
     content = gitignore_path.read_text(encoding="utf-8")
@@ -216,10 +216,10 @@ def update_gitignore(project_dir: Path, *, dry_run: bool) -> None:
     if not existing_ignore:
         # None of the GITIGNORE_ENTRIES lines exist — add full section
         if dry_run:
-            print(f"  [dry-run] Would add Code Quality section to .gitignore")
+            print("  [dry-run] Would add Code Quality section to .gitignore")
             return
         gitignore_path.write_text(content.rstrip() + "\n\n" + new_section, encoding="utf-8")
-        print(f"  📄 Updated .gitignore")
+        print("  📄 Updated .gitignore")
         return
 
     if not missing:
@@ -232,7 +232,7 @@ def update_gitignore(project_dir: Path, *, dry_run: bool) -> None:
             last_idx = i
 
     if dry_run:
-        print(f"  [dry-run] Would add some Code Quality entries to .gitignore")
+        print("  [dry-run] Would add some Code Quality entries to .gitignore")
         return
 
     new_lines = content_lines[: last_idx + 1] + missing + content_lines[last_idx + 1:]
@@ -329,7 +329,7 @@ def resolve_versions(project_dir: Path, *, force: bool) -> tuple[str | None, str
 
     if current_version == new_version and not force:
         print(f"ℹ️  Already at version {new_version}.)")
-        print(f"    You can use --force to reinstall.")
+        print("    You can use --force to reinstall.")
         sys.exit(0)
 
     return current_version, new_version
@@ -339,7 +339,8 @@ def confirm_install(current_version: str | None, new_version: str,
                     project_dir: Path) -> bool:
     """Prompt the user and return True to proceed, False to abort."""
     if current_version:
-        prompt = f"This will update Code Quality (v{current_version} → v{new_version}) in {project_dir}"
+        prompt = ("This will update Code Quality "
+                  f"(v{current_version} → v{new_version}) in {project_dir}")
     else:
         prompt = f"This will install Code Quality v{new_version} in {project_dir}"
     print(prompt)

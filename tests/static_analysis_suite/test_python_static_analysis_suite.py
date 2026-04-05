@@ -1,14 +1,18 @@
-"""Tests for python_static_analysis_suite.py — tests StaticAnalysisToolsRunner logic, all subprocess calls mocked."""
+"""Tests for python_static_analysis_suite.py.
+
+Tests StaticAnalysisToolsRunner logic, all subprocess calls mocked.
+"""
 
 import subprocess
 import sys
 from io import StringIO
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / ".claude" / "code-quality" / "scripts"))
+sys.path.insert(
+    0, str(Path(__file__).resolve().parents[2] / ".claude" / "code-quality" / "scripts"))
 import python_static_analysis_suite as suite
 from python_static_analysis_suite import StaticAnalysisToolsRunner
 
@@ -32,7 +36,8 @@ def _fake_completed(stdout="", stderr="", returncode=0):
 
 class TestCmdFromTemplate:
     def test_replaces_path_placeholder(self):
-        cmd = StaticAnalysisToolsRunner._cmd_from_template(Path("foo.py"), ("ruff", "check", suite.REPLACE_PATH))
+        cmd = StaticAnalysisToolsRunner._cmd_from_template(
+            Path("foo.py"), ("ruff", "check", suite.REPLACE_PATH))
         assert cmd == ["ruff", "check", "foo.py"]
 
     def test_no_placeholder(self):
@@ -75,7 +80,8 @@ class TestRunTool:
         assert "nosuchtool" in runner._missing_tools
         assert "not installed" in buf.getvalue()
 
-    @patch("python_static_analysis_suite.subprocess.run", side_effect=subprocess.TimeoutExpired(cmd=[], timeout=120))
+    @patch("python_static_analysis_suite.subprocess.run",
+           side_effect=subprocess.TimeoutExpired(cmd=[], timeout=120))
     def test_timeout_recorded(self, mock_run):
         runner, buf = _make_runner()
         runner._run_tool(Path("f.py"), ("slow", suite.REPLACE_PATH))
@@ -101,7 +107,7 @@ class TestRunDirectory:
         runner, buf = _make_runner()
         runner.run(tmp_path)
         output = buf.getvalue()
-        assert f"<file" in output
+        assert "<file" in output
         assert "</file>" in output
 
 
@@ -136,7 +142,7 @@ class TestWriteStats:
 # Issue-specific xfail tests — expected to fail until Phase 5 fixes are applied
 # ---------------------------------------------------------------------------
 
-class TestIssue2_MissingClosingBracket:
+class TestIssue2MissingClosingBracket:
     def test_closing_tag_is_well_formed(self):
         runner, buf = _make_runner()
         runner._missing_tools = ["ruff"]
@@ -145,7 +151,7 @@ class TestIssue2_MissingClosingBracket:
         assert f"</{suite.MISSING_TOOLS_TAG}>" in output
 
 
-class TestIssue1_SingleFileMissingFileWrapper:
+class TestIssue1SingleFileMissingFileWrapper:
     @patch("python_static_analysis_suite.subprocess.run", return_value=_fake_completed())
     def test_single_file_has_file_tags(self, mock_run, tmp_path):
         f = tmp_path / "hello.py"
@@ -157,7 +163,7 @@ class TestIssue1_SingleFileMissingFileWrapper:
         assert "</file>" in output
 
 
-class TestIssue3_SymlinkResolution:
+class TestIssue3SymlinkResolution:
     @patch("python_static_analysis_suite.subprocess.run", return_value=_fake_completed())
     def test_symlink_is_resolved(self, mock_run, tmp_path):
         real = tmp_path / "real.py"
@@ -173,7 +179,7 @@ class TestIssue3_SymlinkResolution:
         assert str(real) in output or "real.py" in output
 
 
-class TestIssue4_FolderToolsSkippedNote:
+class TestIssue4FolderToolsSkippedNote:
     @patch("python_static_analysis_suite.subprocess.run", return_value=_fake_completed())
     def test_single_file_logs_folder_tools_skipped(self, mock_run, tmp_path, capsys):
         f = tmp_path / "hello.py"
@@ -185,18 +191,18 @@ class TestIssue4_FolderToolsSkippedNote:
         assert "folder" in lower and "skipped" in lower
 
 
-class TestIssue9_XootRemoved:
+class TestIssue9XootRemoved:
     def test_no_xoot_in_file_tools(self):
         tool_names = [t[0] for t in suite.FILE_TOOLS]
         assert "xoot" not in tool_names
 
 
-class TestIssue13_TimeoutConstant:
+class TestIssue13TimeoutConstant:
     def test_timeout_uses_module_constant(self):
         assert hasattr(suite, "TOOL_TIMEOUT_SECONDS")
 
 
-class TestIssue14_ExceptionDetailsLogged:
+class TestIssue14ExceptionDetailsLogged:
     def test_timeout_includes_exception_detail(self):
         exc = subprocess.TimeoutExpired(cmd=["slow"], timeout=120)
         exc.stdout = "partial output"
@@ -209,15 +215,16 @@ class TestIssue14_ExceptionDetailsLogged:
             assert "partial" in output or "TimeoutExpired" in output
 
 
-class TestIssue15_ReturnCodeLogged:
-    @patch("python_static_analysis_suite.subprocess.run", return_value=_fake_completed(returncode=2, stderr="err"))
+class TestIssue15ReturnCodeLogged:
+    @patch("python_static_analysis_suite.subprocess.run",
+           return_value=_fake_completed(returncode=2, stderr="err"))
     def test_nonzero_return_code_in_output(self, mock_run):
         runner, buf = _make_runner()
         runner._run_tool(Path("f.py"), ("ruff", "check", suite.REPLACE_PATH))
         assert "2" in buf.getvalue()
 
 
-class TestIssue16_FileCountLogged:
+class TestIssue16FileCountLogged:
     @patch("python_static_analysis_suite.subprocess.run", return_value=_fake_completed())
     def test_directory_logs_file_count(self, mock_run, tmp_path, capsys):
         (tmp_path / "a.py").touch()
@@ -229,12 +236,12 @@ class TestIssue16_FileCountLogged:
         assert "Found 2" in combined or "2 Python file" in combined
 
 
-class TestIssue20_DashPathSanitized:
+class TestIssue20DashPathSanitized:
     @patch("python_static_analysis_suite.subprocess.run", return_value=_fake_completed())
     def test_path_starting_with_dash_is_sanitized(self, mock_run):
         # Use a bare relative-style Path so it starts with "-"
         f = Path("-malicious.py")
-        runner, buf = _make_runner()
+        runner, _buf = _make_runner()
         runner._run_tool(f, ("ruff", "check", suite.REPLACE_PATH))
         call_args = mock_run.call_args[0][0]
         path_arg = [a for a in call_args if "malicious" in a][0]
@@ -242,7 +249,7 @@ class TestIssue20_DashPathSanitized:
         assert not path_arg.startswith("-") or "--" in call_args
 
 
-class TestIssue22_TimeoutBytesDecoded:
+class TestIssue22TimeoutBytesDecoded:
     @pytest.mark.xfail(reason="issue #22: TimeoutExpired stdout stderr bytes not str")
     def test_timeout_partial_output_decoded_not_bytes_repr(self):
         exc = subprocess.TimeoutExpired(cmd=["slow"], timeout=120)
@@ -257,7 +264,7 @@ class TestIssue22_TimeoutBytesDecoded:
             assert "b'" not in output
 
 
-class TestIssue24_ExtraArgsWarning:
+class TestIssue24ExtraArgsWarning:
     @pytest.mark.xfail(reason="issue #24: extra CLI arguments silently ignored")
     def test_extra_args_causes_error(self, tmp_path):
         f = tmp_path / "test.py"
@@ -268,7 +275,7 @@ class TestIssue24_ExtraArgsWarning:
                 suite.main()
 
 
-class TestIssue25_LogFileOpenErrorHandled:
+class TestIssue25LogFileOpenErrorHandled:
     @pytest.mark.xfail(reason="issue #25: log file open without error handling in main")
     def test_bad_log_path_gives_friendly_error(self, tmp_path, capsys):
         f = tmp_path / "test.py"
@@ -285,7 +292,7 @@ class TestIssue25_LogFileOpenErrorHandled:
             assert "error" in output.out.lower() or "error" in output.err.lower()
 
 
-class TestIssue26_TopLevelOSErrorHandled:
+class TestIssue26TopLevelOSErrorHandled:
     @pytest.mark.xfail(reason="issue #26: log file write errors unhandled during tool execution")
     @patch("python_static_analysis_suite.subprocess.run", return_value=_fake_completed())
     def test_write_error_during_run_caught(self, mock_run, tmp_path, capsys):
@@ -300,7 +307,7 @@ class TestIssue26_TopLevelOSErrorHandled:
                 assert exc_info.value.code != 0
 
 
-class TestIssue27_SubprocessEncodingError:
+class TestIssue27SubprocessEncodingError:
     @pytest.mark.xfail(reason="issue #27: subprocess run inherits no encoding-error policy")
     @patch("python_static_analysis_suite.subprocess.run")
     def test_subprocess_uses_error_replacement(self, mock_run):
@@ -317,7 +324,7 @@ class TestIssue27_SubprocessEncodingError:
         assert "errors" in actual_kwargs
 
 
-class TestIssue28_ConfigurableTimeout:
+class TestIssue28ConfigurableTimeout:
     @pytest.mark.xfail(reason="issue #28: hardcoded tool timeout with no configuration option")
     @patch("python_static_analysis_suite.subprocess.run", return_value=_fake_completed())
     def test_timeout_cli_arg_respected(self, mock_run, tmp_path):
@@ -332,9 +339,10 @@ class TestIssue28_ConfigurableTimeout:
                 assert call.kwargs["timeout"] == 60
 
 
-class TestIssue29_GenericExceptionCaught:
+class TestIssue29GenericExceptionCaught:
     @pytest.mark.xfail(reason="issue #29: subprocess generic exception not caught or logged")
-    @patch("python_static_analysis_suite.subprocess.run", side_effect=PermissionError("access denied"))
+    @patch("python_static_analysis_suite.subprocess.run",
+           side_effect=PermissionError("access denied"))
     def test_permission_error_caught_and_logged(self, mock_run):
         runner, buf = _make_runner()
         # Should not raise, should log the error and continue
@@ -343,7 +351,7 @@ class TestIssue29_GenericExceptionCaught:
         assert "error" in output.lower() or "permission" in output.lower()
 
 
-class TestIssue30_IncompleteRunMarked:
+class TestIssue30IncompleteRunMarked:
     @pytest.mark.xfail(reason="issue #30: main crashes with no log on unhandled runner error")
     @patch("python_static_analysis_suite.subprocess.run", side_effect=OSError("disk full"))
     def test_incomplete_run_writes_error_tag(self, mock_run, tmp_path):
@@ -362,7 +370,7 @@ class TestIssue30_IncompleteRunMarked:
         assert f"<{suite.STATS_TAG}>" in content
 
 
-class TestIssue31_CoverageCounters:
+class TestIssue31CoverageCounters:
     @pytest.mark.xfail(reason="issue #31: no file count or completion logged to report")
     @patch("python_static_analysis_suite.subprocess.run", return_value=_fake_completed())
     def test_stats_include_file_count(self, mock_run, tmp_path):

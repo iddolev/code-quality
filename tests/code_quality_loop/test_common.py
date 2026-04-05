@@ -1,11 +1,6 @@
 """Tests for common.py utilities."""
-import json
-import os
 import re
-from unittest.mock import patch, MagicMock
 from pathlib import Path
-
-import pytest
 
 from common import (
     strip_markdown_fence,
@@ -15,7 +10,6 @@ from common import (
     now_utc,
     format_examples_for_type,
     load_issue_types,
-    call_llm,
     parse_llm_response,
 )
 
@@ -168,7 +162,7 @@ def test_cli_stderr_logged_on_success():
     import inspect
     import common
     source = inspect.getsource(common._call_via_cli)
-    after_error_block = source.split("return result.stdout")[0]
+    after_error_block = source.split("return result.stdout", maxsplit=1)[0]
     assert "warn" in after_error_block.lower() or "log" in after_error_block.lower()
 
 
