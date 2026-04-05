@@ -27,31 +27,28 @@ If the user chooses to install, follow the install mode instructions in
 ## Run instructions
 
 If `$ARGUMENTS` is empty, ask the user what they want to run on:
+
 - A specific file path
 - A specific folder path
 - All Python files in the repository
 
-If the user chooses (or `$ARGUMENTS` is) `all`, run on every `.py` file in the
-repository, excluding files inside `sandbox/` and files excluded by `.gitignore`.
-To collect the file list, run:
-
-```bash
-git ls-files '*.py'
-```
-
-Then filter out any paths that start with `sandbox/`. Process each file one at a
-time, running the full workflow on each before moving to the next.
+If the user chooses (or `$ARGUMENTS` is) `all`, use `.` (the repo root) as the
+target path. The suite script handles folder traversal internally, excluding
+`sandbox/`, `venv/`, `tmp/`, `__pycache__/`, and `.git/`.
 
 If the folder `tmp/python_static_analysis_suite` does not exist, create it.
 
 Let timestamp = the current date and time in format YYYYMMDD_hhmmss.
-Let raw_output_path = tmp/python_static_analysis_suite/<filename>_<timestamp>.raw.log.
-Let jsonl_path = tmp/python_static_analysis_suite/<filename>_<timestamp>.jsonl.
-Let output_path = tmp/python_static_analysis_suite/<filename>_<timestamp>.log.
+Let target_name = the basename of the target (filename without extension, or
+folder name; use `all` when the target is `.`).
+Let raw_output_path = tmp/python_static_analysis_suite/<target_name>_<timestamp>.raw.log.
+Let jsonl_path = tmp/python_static_analysis_suite/<target_name>_<timestamp>.jsonl.
+Let output_path = tmp/python_static_analysis_suite/<target_name>_<timestamp>.log.
 
 ### Step 1: Run the tools
 
-Run `python_static_analysis_suite.py` with two parameters: `$ARGUMENTS` and raw_output_path.
+Run `python_static_analysis_suite.py` with two parameters: the target path and
+raw_output_path. The script accepts a single file or a folder — invoke it once.
 
 ### Step 2: Parse the raw output
 
