@@ -9,7 +9,7 @@ If invoked with `--missing`, only check which tools are missing and report:
 For each tool, run:
 
 ```bash
-<tool> --version
+<tool> --version 2>/dev/null && echo "OK" || echo "MISSING"
 ```
 
 If the command fails or the tool is not found, it is missing.

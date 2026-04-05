@@ -14,7 +14,8 @@ First check if all tools are installed by following the instructions in
 
 If the result is "all installed", proceed to the Run instructions.
 
-If some tools are missing, tell the user which tools need to be installed and ask whether they want to:
+If some tools are missing, **tell the user which tools need to be installed** 
+and use AskUserQuestion to verify whether they want to:
 
 1. Install the missing tools and then run the suite
 2. Install the missing tools without running the suite

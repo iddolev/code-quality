@@ -57,10 +57,11 @@ LINE_INDENT = " " * 4
 class StaticAnalysisToolsRunner:
     """Runs code quality tools and writes results to a log file."""
 
-    def __init__(self):
+    def __init__(self, log_path: Path):
         self._missing_tools: list[str] = []
         self._tool_times: dict[str, float] = defaultdict(float)
         self._start_time: datetime | None = None
+        self._log_path = log_path
         self._log_file = None
 
     @staticmethod
@@ -183,7 +184,7 @@ class StaticAnalysisToolsRunner:
         self._log_file.write(f"</{STATS_TAG}>\n")
 
     def run(self, path: Path) -> None:
-        with open(path, "w", encoding="utf-8") as log_file:
+        with open(self._log_path, "w", encoding="utf-8") as log_file:
             self._log_file = log_file
             self._run(path)
             self._write_missing_tools_summary()
