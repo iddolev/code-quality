@@ -112,13 +112,19 @@ For each issue show:
 - Proposed fix
 - Senior SE reasoning — why it was escalated
 
-Then use the `AskUserQuestion` tool to ask for the user's decision with these
-four options:
+Then use the `AskUserQuestion` tool to ask for the user's decision. If the
+proposed fix contains a single clear action, use these four options:
 
 - **Approve** — apply the fix as proposed
 - **Reject** — don't apply this fix
 - **Skip** — defer it to a future run
 - **Custom** — provide a different fix instruction
+
+If the proposed fix presents multiple alternatives (e.g., "do A or B",
+"either X, or at minimum Y"), list each alternative as its own option instead
+of a single "Approve". Always include **Reject** and **Skip** as well. When the
+user picks one of the alternatives, record it as `action: "custom"` with
+`custom_fix` set to the chosen alternative's description.
 
 If the record has `action: skipped_re_ask`, note in the question that this issue
 was previously deferred.
