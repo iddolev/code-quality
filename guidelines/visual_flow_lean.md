@@ -1,5 +1,5 @@
 ---
-description: A lean version of guidelines/visual_flow.md, for including in coding prompts.
+description: A lean version of .claude/code-quality/guidelines/visual_flow.md, for including in coding prompts.
 ---
 
 # Visual Flow Guidelines (Lean)

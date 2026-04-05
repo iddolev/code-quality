@@ -14,7 +14,7 @@ python .\scripts\install-tools.py
 
 ## Guidelines
 
-1. guidelines/visual_flow.md  -- used by scripts/visual_flow_applier.py and 
+1. .claude/code-quality/guidelines/visual_flow.md  -- used by scripts/visual_flow_applier.py and 
 
 ## Claude Code Commands
 

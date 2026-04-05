@@ -1,6 +1,6 @@
 # Comparison of Visual Flow Guidelines to Alternatives
 
-Comparison of `guidelines/visual_flow.md` to alternatives. 
+Comparison of `.claude/code-quality/guidelines/visual_flow.md` to alternatives. 
 
 Below is information obtained from claude.ai about alternatives.
 
