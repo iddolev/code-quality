@@ -3,10 +3,12 @@ description: "Apply visual flow guidelines to improve code structure and readabi
 argument-hint: "<file-or-folder (optional)> or 'all' for all code files"
 ---
 
-- If `$ARGUMENTS` is empty, ask the user what they want to run on:
-  - A specific file path
-  - A specific folder path
-  - All code files in the repository
+- If `$ARGUMENTS` is empty, use the `AskUserQuestion` tool to ask the user what they want to run on. Provide these options:
+  - `file` — A specific file path
+  - `folder` — A specific folder path
+  - `all` — All code files in the repository
+
+  If the user picks `file` or `folder`, follow up by asking for the path (via `AskUserQuestion` with an open-ended prompt or a plain text question).
 
 - If the user chooses (or `$ARGUMENTS` is) `all`, run on every code file in the
   repository, excluding files inside `sandbox/` and files excluded by `.gitignore`.
