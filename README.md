@@ -18,7 +18,7 @@ python .\scripts\install-tools.py
 
 ## Claude Code Commands
 
-1. /code-quality:python-static-analysis-suite  -- uses .claude/code-quality/scripts/python_static_analysis_suite.py
+1. /code-quality:python-static-analysis-suite  -- uses .claude/code-quality/scripts/python_static_analysis/python_static_analysis_suite.py
 2. /code-quality:run  -- uses .claude/code_quality/scripts/code_quality_loop.py and related scripts in that folder
 3. /code-quality:visual-flow  -- uses .claude/code_quality/scripts/visual_flow_applier.py
 

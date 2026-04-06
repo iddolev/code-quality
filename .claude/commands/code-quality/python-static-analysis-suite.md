@@ -68,7 +68,7 @@ This filters out ignored findings and writes a formatted report with these secti
 6. Uncategorized rules (if any — see below)
 
 Rule configuration (ignore, auto_fixable, category) is in
-`.claude/code-quality/scripts/python_static_analysis_report.yaml`.
+`.claude/code-quality/scripts/python_static_analysis/python_static_analysis_report.yaml`.
 
 ### Step 4: Handle uncategorized rules
 
