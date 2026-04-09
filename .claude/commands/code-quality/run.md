@@ -24,7 +24,7 @@ If the argument is `all` (or the user selects "all" after being asked), run the
 workflow on every `.py` file in the repository, excluding:
 
 - Files inside `sandbox/`
-- Files excluded by `.gitignore` (e.g. `venv/`, `tmp/`, `__pycache__/`, etc.)
+- Files excluded by `.gitignore` (e.g. `./venv/`, `./tmp/`, `__pycache__/`, etc.)
 
 To collect the file list, run:
 
@@ -35,9 +35,9 @@ git ls-files '*.py'
 This respects `.gitignore` automatically. Then filter out any paths that start with
 `sandbox/`.
 
-#### Tracking file: `tmp/code_quality_run.json`
+#### Tracking file: `./tmp/code_quality_run.json`
 
-Multi-file runs are tracked in `tmp/code_quality_run.json` so that interrupted runs
+Multi-file runs are tracked in `./tmp/code_quality_run.json` so that interrupted runs
 can be resumed. The file contains a JSON array of objects, each with:
 
 ```json
@@ -53,7 +53,7 @@ indicating when the record was last updated.
 
 **On invocation, follow this logic:**
 
-1. If `tmp/code_quality_run.json` **does not exist**, create it from the fresh file
+1. If `./tmp/code_quality_run.json` **does not exist**, create it from the fresh file
    list with every entry set to `"status": "pending"`.
 
 2. If the file **exists**, read it and inspect the statuses:
