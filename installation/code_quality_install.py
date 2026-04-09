@@ -52,7 +52,7 @@ REPO_SLUG = "iddolev/code-quality"  # for raw.githubusercontent.com
 PATH_MAP: list[tuple[str, str, bool]] = [
     (f"{CQ_VERSION_FILEPATH_REMOTE}",               CQ_VERSION_FILEPATH, True),
     (".claude/commands/code-quality/", ".claude/commands/code-quality/", True),
-    (".claude/code-quality",                   " .claude/code-quality/", True),
+    (".claude/code-quality",                    ".claude/code-quality/", True),
 ]
 
 # The following are supposed to be copied as-is to the user's project
