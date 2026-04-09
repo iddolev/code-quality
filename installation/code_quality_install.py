@@ -29,7 +29,7 @@ import yaml
 
 # Although the following 3 variables appear in dist/.claude/scripts/code-quality/common.py
 # this file cannot be accessed here, as it can be copied only during copy_path_map()
-CQ_FOLDER = ".code_quality"
+CQ_FOLDER = ".code-quality"
 CQ_CONFIG_FOLDER = f"{CQ_FOLDER}/config"
 CQ_INFO_FILENAME = ".cq.yaml"
 CQ_INFO_FILEPATH = f"{CQ_CONFIG_FOLDER}/{CQ_INFO_FILENAME}"
@@ -40,7 +40,7 @@ CQ_VERSION_FILEPATH_REMOTE = f"{CQ_DISTRIBUTION_FOLDER}/{CQ_FOLDER}/version.yaml
 
 
 REPO_URL = "https://github.com/iddolev/code-quality.git"
-REPO_SLUG = "iddolev/code_quality"  # for raw.githubusercontent.com
+REPO_SLUG = "iddolev/code-quality"  # for raw.githubusercontent.com
 # TODO: support cloning a specific tag/branch, not only HEAD
 
 # List of:
