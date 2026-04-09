@@ -118,6 +118,7 @@ def _call_via_cli(system_message: str, user_message: str, model: str) -> str:
             text=True,
             timeout=_CLI_TIMEOUT,
             env=env,
+            check=False,
         )
         if result.returncode != 0:
             raise RuntimeError(

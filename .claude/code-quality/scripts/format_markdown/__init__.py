@@ -90,7 +90,8 @@ def process_file(path: Path, is_dry_run: bool = False) -> bool:
             path.write_text(formatted, encoding="utf-8")
             print(f"  FIXED: {path}")
         return True
-    except Exception as exc:
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        # Per-file safety net: a failure on one file must not abort the batch.
         print(f"  WARNING: Could not process {path}: {exc}", file=sys.stderr)
         return False
 

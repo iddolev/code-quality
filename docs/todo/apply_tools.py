@@ -40,7 +40,7 @@ def _run_tool(path: Path, cmd_template: tuple[str, ...], log_file: TextIOWrapper
     cmd = _cmd_from_template(path, cmd_template)
     log_file.write(f"{TOOL_SEPARATOR} {cmd[0]} {TOOL_SEPARATOR}\n")
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, check=False)
         if result.stdout:
             log_file.write(result.stdout)
             if not result.stdout.endswith("\n"):

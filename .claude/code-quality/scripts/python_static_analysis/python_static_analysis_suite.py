@@ -72,7 +72,7 @@ class StaticAnalysisToolsRunner:
         try:
             result = subprocess.run(
                 cmd, capture_output=True, text=True,
-                timeout=TOOL_TIMEOUT_SECONDS)
+                timeout=TOOL_TIMEOUT_SECONDS, check=False)
             self._write_result(result)
         except FileNotFoundError as e:
             self._log_file.write(

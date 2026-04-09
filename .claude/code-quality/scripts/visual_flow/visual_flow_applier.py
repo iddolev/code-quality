@@ -209,6 +209,7 @@ def apply_patch(original_code: str, diff_text: str, source_path: Path) -> str | 
             capture_output=True,
             text=True,
             cwd=tmpdir,
+            check=False,
         )
         if result.returncode != 0:
             print(f"Warning: patch failed:\n{result.stderr}\n{result.stdout}", file=sys.stderr)
