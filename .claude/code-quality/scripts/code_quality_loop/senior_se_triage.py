@@ -10,10 +10,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
-from common import call_llm, decisions_path, issues_path, load_prompt, log_append, now_utc, \
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from call_llm import call_llm
+from common import decisions_path, issues_path, load_prompt, log_append, now_utc, \
     strip_markdown_fence
 
 _MODEL = "claude-opus-4-6"

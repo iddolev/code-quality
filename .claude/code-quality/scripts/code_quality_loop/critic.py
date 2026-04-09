@@ -10,10 +10,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
-from common import call_llm, decisions_path, format_examples_for_type, issues_path, \
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from call_llm import call_llm
+from common import decisions_path, format_examples_for_type, issues_path, \
     load_issue_examples, load_issue_types, load_prompt, log_append, now_utc, \
     parse_llm_response
 from parent_context import gather_external_context

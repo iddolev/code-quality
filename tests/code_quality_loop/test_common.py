@@ -122,46 +122,46 @@ def test_load_issue_types_has_id_and_body():
 def test_dotenv_uses_find_dotenv():
     """load_dotenv uses find_dotenv() instead of hardcoded parents[4]."""
     import inspect
-    import common
-    source = inspect.getsource(common)
+    import call_llm
+    source = inspect.getsource(call_llm)
     assert "find_dotenv" in source
     assert "parents[4]" not in source
 
 
 def test_lazy_client_initialization():
     """Client is initialized lazily via _get_anthropic_client(), not at module level."""
-    import common
-    assert hasattr(common, "_get_anthropic_client")
-    assert callable(common._get_anthropic_client)
+    import call_llm
+    assert hasattr(call_llm, "_get_anthropic_client")
+    assert callable(call_llm._get_anthropic_client)
 
 
 def test_cli_timeout_from_env():
     """CLI timeout is configurable via LLM_CLI_TIMEOUT env var."""
     import inspect
-    import common
-    source = inspect.getsource(common)
+    import call_llm
+    source = inspect.getsource(call_llm)
     assert "LLM_CLI_TIMEOUT" in source
 
 
 def test_max_tokens_constant():
     """max_tokens default comes from a module constant."""
-    import common
-    assert hasattr(common, "DEFAULT_MAX_TOKENS")
+    import call_llm
+    assert hasattr(call_llm, "DEFAULT_MAX_TOKENS")
 
 
 def test_default_model_from_env():
     """Default model is readable from LLM_DEFAULT_MODEL env var."""
     import inspect
-    import common
-    source = inspect.getsource(common)
+    import call_llm
+    source = inspect.getsource(call_llm)
     assert "LLM_DEFAULT_MODEL" in source
 
 
 def test_cli_stderr_logged_on_success():
     """Non-empty stderr on success is logged/warned."""
     import inspect
-    import common
-    source = inspect.getsource(common._call_via_cli)
+    import call_llm
+    source = inspect.getsource(call_llm._call_via_cli)
     after_error_block = source.split("return result.stdout", maxsplit=1)[0]
     assert "warn" in after_error_block.lower() or "log" in after_error_block.lower()
 
@@ -176,8 +176,8 @@ def test_parse_llm_response_accepts_label():
 def test_call_llm_has_logging():
     """call_llm logs invocations."""
     import inspect
-    import common
-    source = inspect.getsource(common.call_llm)
+    import call_llm as call_llm_module
+    source = inspect.getsource(call_llm_module.call_llm)
     assert "log" in source.lower()
 
 
