@@ -11,7 +11,7 @@ from code_quality_loop.common import (
     format_examples_for_type,
     load_issue_types,
 )
-from common import parse_llm_response
+from parse_llm_response import parse_llm_response
 
 
 # --- strip_markdown_fence ---

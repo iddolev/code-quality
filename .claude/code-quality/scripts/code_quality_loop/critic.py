@@ -19,7 +19,7 @@ from call_llm import call_llm
 from code_quality_loop.common import decisions_path, format_examples_for_type, \
     issues_path, load_issue_examples, load_issue_types, load_prompt, log_append, \
     now_utc
-from common import parse_llm_response
+from parse_llm_response import parse_llm_response
 from parent_context import gather_external_context
 
 _MODEL = "claude-opus-4-6"

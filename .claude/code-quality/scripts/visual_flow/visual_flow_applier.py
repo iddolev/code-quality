@@ -27,7 +27,7 @@ from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from call_llm import call_llm
-from common import parse_llm_response
+from parse_llm_response import parse_llm_response
 
 load_dotenv(Path(__file__).resolve().parent.parent.parent.parent / ".env")
 

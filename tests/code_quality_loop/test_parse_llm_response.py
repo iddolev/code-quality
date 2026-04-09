@@ -1,7 +1,7 @@
 """Tests for parse_llm_response and _extract_json."""
 import json
 
-from common import parse_llm_response
+from parse_llm_response import parse_llm_response
 
 
 # --- Clean JSON (no extraction needed) ---
