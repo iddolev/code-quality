@@ -61,8 +61,17 @@ def _should_ignore(finding: dict) -> bool:
     file_path = finding.get("file", "")
 
     # YAML-configured ignores
-    if rule in _RULES and _RULES[rule].get("ignore"):
-        return True
+    if rule in _RULES:
+        cfg = _RULES[rule]
+        if cfg.get("ignore"):
+            return True
+        paths = cfg.get("ignore_paths") or []
+        if paths:
+            norm = file_path.replace("\\", "/") + "/"
+            for p in paths:
+                needle = "/" + p.strip("/") + "/"
+                if needle in norm:
+                    return True
 
     # Special patterns not in YAML (context-dependent)
 

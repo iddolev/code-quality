@@ -26,6 +26,8 @@ rules:
     C0115:
       description: Missing class docstring
       category: documentation
+      ignore_paths:
+        - tests/
 
     C0116:
       description: Missing function or method docstring

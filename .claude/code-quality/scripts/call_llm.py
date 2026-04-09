@@ -64,8 +64,6 @@ def call_llm(*, system_message: str, user_message: str,
         if backend == "api":
             result = _call_via_api(system_message, user_message, max_tokens, model)
         elif backend == "cli":
-            if max_tokens:
-                raise ValueError("max_tokens is not supported with the CLI backend")
             result = _call_via_cli(system_message, user_message, model)
         else:
             raise ValueError(f"Unknown LLM_BACKEND: {backend!r} (expected 'api' or 'cli')")
