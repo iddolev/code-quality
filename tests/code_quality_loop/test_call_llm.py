@@ -6,6 +6,7 @@ that puts the scripts/ directory on sys.path.
 from __future__ import annotations
 
 import logging
+import os
 import subprocess
 import types
 from unittest.mock import MagicMock, patch
@@ -44,7 +45,9 @@ def test_call_via_api_returns_text() -> None:
     client.messages.create.return_value = _fake_text_response("hello")
     with patch.object(call_llm, "_get_anthropic_client", return_value=client):
         out = call_llm._call_via_api("sys", "user", 100, "claude-opus-4-6")
-    assert out == "hello"
+    # _call_via_api returns (text, input_tokens, output_tokens)
+    text, _in, _out = out
+    assert text == "hello"
     client.messages.create.assert_called_once()
 
 
@@ -120,7 +123,8 @@ def test_call_llm_unknown_backend_raises() -> None:
 
 def test_call_llm_dispatches_to_api() -> None:
     with patch.object(call_llm, "LLM_BACKEND", "api"), \
-         patch.object(call_llm, "_call_via_api", return_value="api-result") as m:
+         patch.object(call_llm, "_call_via_api",
+                      return_value=("api-result", 1, 2)) as m:
         out = call_llm.call_llm(system_message="s", user_message="u",
                                 model="claude-opus-4-6")
     assert out == "api-result"
@@ -163,8 +167,6 @@ def test_cli_empty_stdout_raises_runtime_error() -> None:
             call_llm._call_via_cli("sys", "user", "claude-opus-4-6")
 
 
-@pytest.mark.xfail(strict=True,
-                   reason="issue #11: DEFAULT_MAX_TOKENS should be env-configurable")
 def test_default_max_tokens_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
     import importlib
     monkeypatch.setenv("LLM_MAX_TOKENS", "12345")
@@ -176,8 +178,6 @@ def test_default_max_tokens_env_override(monkeypatch: pytest.MonkeyPatch) -> Non
         importlib.reload(call_llm)
 
 
-@pytest.mark.xfail(strict=True,
-                   reason="issue #13: call_llm error path should log exception info")
 def test_call_llm_failure_logs_exception_info(caplog: pytest.LogCaptureFixture) -> None:
     boom = RuntimeError("kaboom-detail")
     with patch.object(call_llm, "LLM_BACKEND", "api"), \
@@ -191,8 +191,6 @@ def test_call_llm_failure_logs_exception_info(caplog: pytest.LogCaptureFixture) 
                for rec in caplog.records)
 
 
-@pytest.mark.xfail(strict=True,
-                   reason="issue #14: temp-file unlink failure should log a warning")
 def test_cli_unlink_failure_logged(caplog: pytest.LogCaptureFixture) -> None:
     factory, _ = _fake_popen(0, "ok")
     with patch("call_llm.subprocess.Popen", side_effect=factory), \
@@ -204,8 +202,6 @@ def test_cli_unlink_failure_logged(caplog: pytest.LogCaptureFixture) -> None:
                for rec in caplog.records)
 
 
-@pytest.mark.xfail(strict=True,
-                   reason="issue #15: missing API key should log a clear error")
 def test_get_anthropic_client_logs_when_api_key_missing(
         caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
@@ -218,14 +214,154 @@ def test_get_anthropic_client_logs_when_api_key_missing(
     assert any("ANTHROPIC_API_KEY" in rec.getMessage() for rec in caplog.records)
 
 
-@pytest.mark.xfail(strict=True,
-                   reason="issue #16: CLI subprocess error should log exception/stderr")
 def test_cli_subprocess_error_log_includes_exception(
         caplog: pytest.LogCaptureFixture) -> None:
     factory, _ = _fake_popen(0, "", timeout=True)
     with patch("call_llm.subprocess.Popen", side_effect=factory), \
          caplog.at_level(logging.ERROR, logger=call_llm.logger.name):
-        with pytest.raises(subprocess.TimeoutExpired):
+        # Issue #23: TimeoutExpired is wrapped in a RuntimeError with context.
+        with pytest.raises((subprocess.TimeoutExpired, RuntimeError)):
             call_llm._call_via_cli("sys", "user", "claude-opus-4-6")
     # logger.exception or exc_info=True should attach traceback info
     assert any(rec.exc_info for rec in caplog.records)
+
+
+def test_get_anthropic_client_uses_lock() -> None:
+    import threading
+    # The module should expose a threading.Lock used to guard init.
+    lock = getattr(call_llm, "_ANTHROPIC_INIT_LOCK", None)
+    assert isinstance(lock, type(threading.Lock()))
+
+
+def test_call_llm_docstring_mentions_max_tokens_api_only() -> None:
+    doc = (call_llm.call_llm.__doc__ or "").lower()
+    assert "max_tokens" in doc
+    assert "api" in doc and ("only" in doc or "ignored" in doc)
+
+
+def test_cli_temp_file_removed_on_write_failure(
+        tmp_path: "object") -> None:
+    """Issue #10 baseline: if writing system prompt fails, temp file is cleaned up."""
+    created: list[str] = []
+    real_ntf = call_llm.tempfile.NamedTemporaryFile
+
+    def tracking_ntf(*args, **kwargs):
+        f = real_ntf(*args, **kwargs)
+        created.append(f.name)
+        orig_write = f.write
+
+        def boom(_data):
+            raise OSError("disk full")
+        f.write = boom  # type: ignore[method-assign]
+        return f
+
+    with patch("call_llm.tempfile.NamedTemporaryFile", side_effect=tracking_ntf):
+        with pytest.raises(OSError, match="disk full"):
+            call_llm._call_via_cli("sys", "user", "claude-opus-4-6")
+    # The created temp file should have been cleaned up.
+    assert created, "expected NamedTemporaryFile to be called"
+    for path in created:
+        assert not os.path.exists(path), f"temp file leaked: {path}"
+
+
+# ---------------------------------------------------------------------------
+# Round-2 issue-specific tests (xfail until Phase 5 fixes land)
+# ---------------------------------------------------------------------------
+
+def test_invalid_max_tokens_env_falls_back(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    import importlib
+    monkeypatch.setenv("LLM_MAX_TOKENS", "not-a-number")
+    try:
+        reloaded = importlib.reload(call_llm)
+        assert reloaded.DEFAULT_MAX_TOKENS == 16000
+    finally:
+        monkeypatch.delenv("LLM_MAX_TOKENS", raising=False)
+        importlib.reload(call_llm)
+
+
+def test_model_regex_rejects_leading_dash() -> None:
+    with pytest.raises(ValueError, match="Invalid model name"):
+        call_llm._call_via_cli("sys", "user", "-rm")
+
+
+def test_model_regex_rejects_leading_dot() -> None:
+    with pytest.raises(ValueError, match="Invalid model name"):
+        call_llm._call_via_cli("sys", "user", ".evil")
+
+
+def test_empty_system_message_rejected() -> None:
+    with pytest.raises(ValueError):
+        call_llm.call_llm(system_message="", user_message="u",
+                          model="claude-opus-4-6")
+
+
+def test_empty_user_message_rejected() -> None:
+    with pytest.raises(ValueError):
+        call_llm.call_llm(system_message="s", user_message="",
+                          model="claude-opus-4-6")
+
+
+def test_api_no_text_blocks_error_includes_context() -> None:
+    """Issue #25: non-text-only response raises with stop_reason and block types."""
+    client = MagicMock()
+    resp = _fake_non_text_response()  # content=[tool_use block]
+    resp.stop_reason = "tool_use"
+    client.messages.create.return_value = resp
+    with patch.object(call_llm, "_get_anthropic_client", return_value=client):
+        with pytest.raises(RuntimeError, match="tool_use"):
+            call_llm._call_via_api("sys", "user", 100, "claude-opus-4-6")
+
+
+def test_anthropic_init_flag_set_after_client_assigned(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """If anthropic.Anthropic(...) raises, _ANTHROPIC_INIT_DONE must stay False
+    so a subsequent call can retry instead of seeing a None client."""
+    monkeypatch.setattr(call_llm, "_ANTHROPIC_CLIENT", None)
+    monkeypatch.setattr(call_llm, "_ANTHROPIC_INIT_DONE", False)
+    monkeypatch.setattr(call_llm, "LLM_BACKEND", "api")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "dummy")
+
+    fake_mod = types.SimpleNamespace(
+        Anthropic=MagicMock(side_effect=RuntimeError("init boom")),
+    )
+    import sys
+    monkeypatch.setitem(sys.modules, "anthropic", fake_mod)
+
+    with pytest.raises(RuntimeError, match="init boom"):
+        call_llm._get_anthropic_client()
+    # Flag must not be sticky on failure.
+    assert call_llm._ANTHROPIC_INIT_DONE is False
+
+
+def test_cli_path_env_var_used(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict = {}
+    factory, _ = _fake_popen(0, "ok", captured=captured)
+    monkeypatch.setenv("LLM_CLI_PATH", "custom-claude-bin")
+    import importlib
+    reloaded = importlib.reload(call_llm)
+    try:
+        with patch.object(reloaded, "subprocess") as subp:
+            subp.Popen.side_effect = factory
+            subp.TimeoutExpired = subprocess.TimeoutExpired
+            reloaded._call_via_cli("sys", "user", "claude-opus-4-6")
+        assert captured["args"][0] == "custom-claude-bin"
+    finally:
+        monkeypatch.delenv("LLM_CLI_PATH", raising=False)
+        importlib.reload(call_llm)
+
+
+def test_call_llm_success_log_includes_token_usage(
+        caplog: pytest.LogCaptureFixture) -> None:
+    client = MagicMock()
+    resp = _fake_text_response("hi there")
+    resp.usage = types.SimpleNamespace(input_tokens=42, output_tokens=7)
+    client.messages.create.return_value = resp
+    with patch.object(call_llm, "LLM_BACKEND", "api"), \
+         patch.object(call_llm, "_get_anthropic_client", return_value=client), \
+         caplog.at_level(logging.INFO, logger=call_llm.logger.name):
+        call_llm.call_llm(system_message="s", user_message="u",
+                          model="claude-opus-4-6")
+    messages = " ".join(rec.getMessage() for rec in caplog.records)
+    assert "42" in messages or "input_tokens" in messages
+    assert "7" in messages or "output_tokens" in messages
