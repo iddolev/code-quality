@@ -50,7 +50,7 @@ REPO_SLUG = "iddolev/code-quality"  # for raw.githubusercontent.com
 # destination does not yet exist).
 # Directories are copied recursively; files are copied individually.
 PATH_MAP: list[tuple[str, str, bool]] = [
-    (f"{CQ_VERSION_FILEPATH}",                      CQ_VERSION_FILEPATH, True),
+    (f"{CQ_VERSION_FILEPATH_REMOTE}",               CQ_VERSION_FILEPATH, True),
     (".claude/commands/code-quality/", ".claude/commands/code-quality/", True),
     (".claude/code-quality",                   " .claude/code-quality/", True),
 ]
