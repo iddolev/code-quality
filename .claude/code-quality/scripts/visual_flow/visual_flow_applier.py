@@ -249,15 +249,15 @@ def _apply_rule(rule: dict, current_code: str, log_path: Path) -> str | None:
     response_text = call_claude(prompt)
     parsed = parse_llm_response(response_text)
 
-    if not parsed:
+    if not parsed or not parsed[0]:
         print("  No violation found.")
         return None
 
     result = parsed[0]
     new_text = result.get("new", "")
     if not new_text:
-        print("  Violation found but new version was not provided.", file=sys.stderr)
-        return current_code
+        raise RuntimeError("  Violation found but new version was not provided. "
+                           f"response: {result}")
 
     log_fix(log_path, rule, result)
     print(f"  Fixed: {result.get('description', '(no description)')}")

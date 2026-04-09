@@ -35,6 +35,10 @@ CQ_INFO_FILENAME = ".cq.yaml"
 CQ_INFO_FILEPATH = f"{CQ_CONFIG_FOLDER}/{CQ_INFO_FILENAME}"
 CQ_VERSION_FILEPATH = f"{CQ_FOLDER}/version.yaml"
 
+CQ_DISTRIBUTION_FOLDER = "distribute"
+CQ_VERSION_FILEPATH_REMOTE = f"{CQ_DISTRIBUTION_FOLDER}/{CQ_FOLDER}/version.yaml"
+
+
 REPO_URL = "https://github.com/iddolev/code-quality.git"
 REPO_SLUG = "iddolev/code_quality"  # for raw.githubusercontent.com
 # TODO: support cloning a specific tag/branch, not only HEAD
@@ -46,17 +50,9 @@ REPO_SLUG = "iddolev/code_quality"  # for raw.githubusercontent.com
 # destination does not yet exist).
 # Directories are copied recursively; files are copied individually.
 PATH_MAP: list[tuple[str, str, bool]] = [
-    (f"dist/{CQ_VERSION_FILEPATH}", CQ_VERSION_FILEPATH,                  True),
-    (f"dist/{CQ_CONFIG_FOLDER}",    CQ_CONFIG_FOLDER,                     False),
-    ("dist/README.cq.md",           "README.cq.md",                       True),
-    ("dist/.claude/commands/",       ".claude/commands/",                   True),
-    ("dist/.claude/scripts/",        ".claude/scripts/",                    True),
-    ("dist/.claude/shared/",         ".claude/shared/",                     True),
-    ("dist/rules/",                  "rules/code_quality/",                          True),
-    (".claude/commands/cq/",        ".claude/commands/cq/",               True),
-    (".claude/scripts/cq/",         ".claude/scripts/cq/",                True),
-    (f"dist/{CQ_FOLDER}/preparation/", f"{CQ_FOLDER}/preparation/",       True),
-    ("templates/",                   ".cq/preparation/templates/",         True),
+    (f"{CQ_VERSION_FILEPATH}",                      CQ_VERSION_FILEPATH, True),
+    (".claude/commands/code-quality/", ".claude/commands/code-quality/", True),
+    (".claude/code-quality",                   " .claude/code-quality/", True),
 ]
 
 # The following are supposed to be copied as-is to the user's project
@@ -64,10 +60,8 @@ PATH_MAP: list[tuple[str, str, bool]] = [
 GITIGNORE_ENTRIES = [
     "code_quality_install.bat",
     ".code_quality/config/",
-    ".code_quality/preparation/",
-    ".claude/commands/code_quality/",
-    ".claude/scripts/code_quality/",
-    ".claude/shared",
+    ".claude/commands/code-quality/",
+    ".claude/code-quality/",
 ]
 
 
@@ -144,14 +138,14 @@ def read_cq_version(path: Path) -> str:
 def fetch_remote_version() -> str:
     """Fetch version.yaml from remote repo and return version"""
     try:
-        url = f"https://raw.githubusercontent.com/{REPO_SLUG}/main/dist/{CQ_VERSION_FILEPATH}"
+        url = f"https://raw.githubusercontent.com/{REPO_SLUG}/main/{CQ_VERSION_FILEPATH_REMOTE}"
         with urlopen(url, timeout=10) as resp:
             data = yaml.safe_load(resp.read().decode()) or {}
     except (URLError, UnicodeDecodeError, yaml.YAMLError) as e:
         raise ValueError("Could not fetch remote version from GitHub (check network)") from e
     if v := data.get("version"):
         return v
-    raise ValueError(f"Remote {CQ_VERSION_FILEPATH} is missing a 'version' field")
+    raise ValueError(f"Remote {CQ_VERSION_FILEPATH_REMOTE} is missing a 'version' field")
 
 
 def copy_file(src: Path, dest: Path, *, overwrite: bool, dry_run: bool) -> None:
