@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import subprocess
 import sys
@@ -24,11 +23,10 @@ import tempfile
 
 from pathlib import Path
 
-import anthropic
-
 from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from call_llm import call_llm
 from common import parse_llm_response
 
 load_dotenv(Path(__file__).resolve().parent.parent.parent.parent / ".env")
@@ -36,7 +34,6 @@ load_dotenv(Path(__file__).resolve().parent.parent.parent.parent / ".env")
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROMPT_TEMPLATE_PATH = SCRIPT_DIR / "visual_flow_prompt.md"
 _PROMPT_TEMPLATE = PROMPT_TEMPLATE_PATH.read_text(encoding="utf-8")
-_CLIENT = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 _CONFIG = {
     "model": "claude-sonnet-4-6",
     "repetitions": 1,
@@ -115,14 +112,12 @@ _SYSTEM_PROMPT = (
 
 
 def call_claude(prompt: str) -> str:
-    """Send the prompt to Claude via the Anthropic API and return the response text."""
-    message = _CLIENT.messages.create(
+    """Send the prompt to Claude and return the response text."""
+    return call_llm(
+        system_message=_SYSTEM_PROMPT,
+        user_message=prompt,
         model=_CONFIG["model"],
-        max_tokens=4096,
-        system=_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": prompt}],
     )
-    return message.content[0].text
 
 
 _APPROVAL_SYSTEM_PROMPT ="""
@@ -140,13 +135,13 @@ Answer with only YES or NO.
 def _approve_change(diff_text: str) -> bool:
     """Ask Claude whether the diff preserves semantics. Returns True if approved."""
     content = f"{_APPROVAL_PROMPT.strip()}\n\n```\n{diff_text}\n```"
-    message = _CLIENT.messages.create(
-        model=_CONFIG["model"],
+    response_text = call_llm(
+        system_message=_APPROVAL_SYSTEM_PROMPT.strip(),
+        user_message=content,
         max_tokens=16,
-        system=_APPROVAL_SYSTEM_PROMPT.strip(),
-        messages=[{"role": "user", "content": content}],
+        model=_CONFIG["model"],
     )
-    answer = message.content[0].text.strip().upper()
+    answer = response_text.strip().upper()
     return answer.startswith("YES")
 
 
