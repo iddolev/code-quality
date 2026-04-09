@@ -52,7 +52,7 @@ def _get_anthropic_client():
 
 
 def call_llm(*, system_message: str, user_message: str,
-             max_tokens: int | None = DEFAULT_MAX_TOKENS,
+             max_tokens: int = DEFAULT_MAX_TOKENS,
              model: str = DEFAULT_MODEL) -> str:
     """Send a single-turn request to Claude and return the text response.
 
@@ -62,9 +62,7 @@ def call_llm(*, system_message: str, user_message: str,
     backend = LLM_BACKEND
     try:
         if backend == "api":
-            result = _call_via_api(system_message, user_message,
-                                   max_tokens or DEFAULT_MAX_TOKENS,
-                                   model)
+            result = _call_via_api(system_message, user_message, max_tokens, model)
         elif backend == "cli":
             if max_tokens:
                 raise ValueError("max_tokens is not supported with the CLI backend")
