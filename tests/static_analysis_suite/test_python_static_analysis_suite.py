@@ -11,11 +11,10 @@ from unittest.mock import patch
 
 import pytest
 
-_SUITE_DIR = (
+sys.path.insert(0, str(
     Path(__file__).resolve().parents[2]
     / ".claude" / "code-quality" / "scripts" / "python_static_analysis"
-)
-sys.path.insert(0, str(_SUITE_DIR))
+))
 import python_static_analysis_suite as suite
 from python_static_analysis_suite import StaticAnalysisToolsRunner
 

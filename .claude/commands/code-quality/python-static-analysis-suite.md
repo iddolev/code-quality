@@ -36,14 +36,14 @@ If the user chooses (or `$ARGUMENTS` is) `all`, use `.` (the repo root) as the
 target path. The suite script handles folder traversal internally, excluding
 `sandbox/`, `venv/`, `tmp/`, `__pycache__/`, and `.git/`.
 
-If the folder `tmp/python_static_analysis_suite` does not exist, create it.
+If the folder `./tmp/python_static_analysis_suite` does not exist, create it.
 
 Let timestamp = the current date and time in format YYYYMMDD_hhmmss.
 Let target_name = the basename of the target (filename without extension, or
 folder name; use `all` when the target is `.`).
-Let raw_output_path = tmp/python_static_analysis_suite/<target_name>_<timestamp>.raw.log.
-Let jsonl_path = tmp/python_static_analysis_suite/<target_name>_<timestamp>.jsonl.
-Let output_path = tmp/python_static_analysis_suite/<target_name>_<timestamp>.log.
+Let raw_output_path = ./tmp/python_static_analysis_suite/<target_name>_<timestamp>.raw.log.
+Let jsonl_path = ./tmp/python_static_analysis_suite/<target_name>_<timestamp>.jsonl.
+Let output_path = ./tmp/python_static_analysis_suite/<target_name>_<timestamp>.log.
 
 ### Step 1: Run the tools
 

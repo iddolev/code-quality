@@ -88,7 +88,12 @@ def _call_via_api(system_message: str, user_message: str, max_tokens: int, model
         system=system_message,
         messages=[{"role": "user", "content": user_message}],
     )
-    return response.content[0].text
+    if not response.content:
+        raise RuntimeError("Anthropic API returned an empty content list")
+    text = "".join(b.text for b in response.content if getattr(b, "type", None) == "text")
+    if not text:
+        raise RuntimeError("Anthropic API response contained no text blocks")
+    return text
 
 
 _VALID_MODEL_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
@@ -100,34 +105,55 @@ def _call_via_cli(system_message: str, user_message: str, model: str) -> str:
     if not _VALID_MODEL_PATTERN.match(cli_model):
         raise ValueError(f"Invalid model name for CLI: {cli_model!r}")
     # Write system prompt to a temp file to avoid shell quoting issues with long prompts.
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
-        f.write(system_message)
-        system_file = f.name
+    tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8")
+    system_file = tmp.name
+    try:
+        tmp.write(system_message)
+        tmp.close()
+    except Exception:
+        try:
+            tmp.close()
+        except Exception:
+            pass
+        try:
+            os.unlink(system_file)
+        except OSError:
+            pass
+        raise
     try:
         # Remove ANTHROPIC_API_KEY from the subprocess env so the CLI uses
         # chat-account credits instead of API billing.
         env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
-        result = subprocess.run(
+        proc = subprocess.Popen(
             ["claude", "-p",
              "--model", cli_model,
              "--system-prompt-file", system_file,
              "--no-session-persistence",
              "--output-format", "text"],
-            input=user_message,
-            capture_output=True,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=_CLI_TIMEOUT,
             env=env,
-            check=False,
         )
-        if result.returncode != 0:
+        try:
+            stdout, stderr = proc.communicate(input=user_message, timeout=_CLI_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+            raise
+        if proc.returncode != 0:
             raise RuntimeError(
-                f"claude CLI exited with code {result.returncode}:\n"
-                f"stderr: {result.stderr}\nstdout: {result.stdout}"
+                f"claude CLI exited with code {proc.returncode}:\n"
+                f"stderr: {stderr}\nstdout: {stdout}"
             )
-        if result.stderr:
-            logger.warning("CLI stderr (rc=0): %s", result.stderr.strip())
-        return result.stdout
+        if stderr:
+            logger.warning("CLI stderr (rc=0): %s", stderr.strip())
+        if not stdout.strip():
+            raise RuntimeError(
+                f"claude CLI returned empty stdout (rc=0):\nstderr: {stderr}"
+            )
+        return stdout
     except Exception:
         logger.error("CLI subprocess error: model=%s, prompt_len=%d, timeout=%d",
                       cli_model, len(user_message), _CLI_TIMEOUT)
