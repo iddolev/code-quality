@@ -4,6 +4,7 @@
       "Bash(awk:*)",
       "Bash(bandit:*)",
       "Bash(cat:*)",
+      "Bash(date:*)",
       "Bash(deptry:*)",
       "Bash(echo:*)",
       "Bash(find:*)",

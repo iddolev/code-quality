@@ -246,12 +246,13 @@ def _apply_rule(rule: dict, current_code: str, log_path: Path) -> str | None:
     print(f"Checking rule {rule['id']}: {rule['title']} (scope: {rule['scope']})...")
     prompt = build_prompt(rule, current_code)
     response_text = call_claude(prompt)
-    result = parse_llm_response(response_text)
+    parsed = parse_llm_response(response_text)
 
-    if not result:
+    if not parsed:
         print("  No violation found.")
         return None
 
+    result = parsed[0]
     new_text = result.get("new", "")
     if not new_text:
         print("  Violation found but new version was not provided.", file=sys.stderr)
