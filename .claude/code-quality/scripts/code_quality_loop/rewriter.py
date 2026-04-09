@@ -16,8 +16,8 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from call_llm import call_llm
-from common import decisions_path, issues_path, load_prompt, log_append, now_utc, \
-    strip_markdown_fence
+from code_quality_loop.common import decisions_path, issues_path, load_prompt, \
+    log_append, now_utc, strip_markdown_fence
 
 _MODEL = "claude-opus-4-6"
 _ACTIONABLE = {"implement", "custom"}
@@ -87,7 +87,7 @@ class Rewriter:
     def _apply_fix(self, source_code: str, fix_instruction: str) -> str:
         user_content = f"{source_code}\n\n---FIX---\n{fix_instruction}"
         response_text = call_llm(
-            system=self.system_prompt,
+            system_message=self.system_prompt,
             user_message=user_content,
             max_tokens=8192,
             model=_MODEL,

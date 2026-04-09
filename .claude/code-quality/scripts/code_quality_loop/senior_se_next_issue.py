@@ -18,7 +18,8 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from call_llm import call_llm
-from common import decisions_path, issues_path, load_prompt, log_append, now_utc
+from code_quality_loop.common import decisions_path, issues_path, load_prompt, \
+    log_append, now_utc
 
 _MODEL = "claude-opus-4-6"
 
@@ -117,7 +118,7 @@ class NextRunner:
         system_prompt = load_prompt("relevance_check_prompt.md")
         user_content = f"{self.source_code}\n\n---ISSUE---\n{json.dumps(issue, indent=2)}"
         raw = call_llm(
-            system=system_prompt,
+            system_message=system_prompt,
             user_message=user_content,
             max_tokens=512,
             model=_MODEL,

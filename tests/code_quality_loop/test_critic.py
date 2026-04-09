@@ -4,7 +4,7 @@ from unittest.mock import patch
 import json
 
 import critic
-from common import load_issue_types
+from code_quality_loop.common import load_issue_types
 
 
 RAW_ISSUES = [

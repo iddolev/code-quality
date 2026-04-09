@@ -16,8 +16,8 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from call_llm import call_llm
-from common import decisions_path, issues_path, load_prompt, log_append, now_utc, \
-    strip_markdown_fence
+from code_quality_loop.common import decisions_path, issues_path, load_prompt, \
+    log_append, now_utc, strip_markdown_fence
 
 _MODEL = "claude-opus-4-6"
 
@@ -80,7 +80,7 @@ class SeniorSETriage:
     def _triage_issues(self, issues: list[dict[str, Any]]) -> list[dict[str, Any]]:
         system_prompt = load_prompt("senior_se_triage_prompt.md")
         response_text = call_llm(
-            system=system_prompt,
+            system_message=system_prompt,
             user_message=json.dumps(issues, indent=2),
             max_tokens=4096,
             model=_MODEL,

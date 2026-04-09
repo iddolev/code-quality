@@ -2,7 +2,7 @@
 import re
 from pathlib import Path
 
-from common import (
+from code_quality_loop.common import (
     strip_markdown_fence,
     issues_path,
     decisions_path,
@@ -10,8 +10,8 @@ from common import (
     now_utc,
     format_examples_for_type,
     load_issue_types,
-    parse_llm_response,
 )
+from common import parse_llm_response
 
 
 # --- strip_markdown_fence ---

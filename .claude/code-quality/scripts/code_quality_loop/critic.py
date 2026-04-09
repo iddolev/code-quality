@@ -16,9 +16,10 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from call_llm import call_llm
-from common import decisions_path, format_examples_for_type, issues_path, \
-    load_issue_examples, load_issue_types, load_prompt, log_append, now_utc, \
-    parse_llm_response
+from code_quality_loop.common import decisions_path, format_examples_for_type, \
+    issues_path, load_issue_examples, load_issue_types, load_prompt, log_append, \
+    now_utc
+from common import parse_llm_response
 from parent_context import gather_external_context
 
 _MODEL = "claude-opus-4-6"
@@ -135,7 +136,7 @@ class CodeCritic:
     @staticmethod
     def _call_critic(system_prompt: str, message_for_llm: str) -> list[dict[str, Any]]:
         response_text = call_llm(
-            system=system_prompt,
+            system_message=system_prompt,
             user_message=message_for_llm,
             max_tokens=4096,
             model=_MODEL,

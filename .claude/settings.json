@@ -23,6 +23,7 @@
       "Bash(radon:*)",
       "Bash(ruff:*)",
       "Bash(vulture:*)",
+      "Bash(wc:*)",
       "Bash(xargs grep:*)",
       "Edit(**.decisions.json)",
       "Read(**)",

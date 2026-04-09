@@ -141,6 +141,10 @@ rules:
       description: Access to member on optional type without None check
       category: type-safety
 
+    reportCallIssue:
+      description: Function call with wrong/missing arguments or unknown parameter name
+      category: type-safety
+
   ruff:
 
     E741:
