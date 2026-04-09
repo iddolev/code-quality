@@ -34,3 +34,4 @@ python .claude/code-quality/scripts/visual_flow/visual_flow_applier.py .claude/c
 
 - **Before** running the script on each file, tell the user which file is being processed.
 - **After** each file completes, show the user the output file path and log file path from the script's stdout.
+
