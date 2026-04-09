@@ -3,12 +3,6 @@ description: "Apply visual flow guidelines to improve code structure and readabi
 argument-hint: "<file-or-folder (optional)> or 'all' for all code files"
 ---
 
-Tell the user: 
-Remember to implement the backend LLM like in common.py using claude -p.
-
-Then STOP AND DO NOT CONTINUE (this is to make sure that I remember now what to do)
-
-
 - If `$ARGUMENTS` is empty, use the `AskUserQuestion` tool to ask the user what they want to run on. Provide these options:
   - `file` — A specific file path
   - `folder` — A specific folder path
