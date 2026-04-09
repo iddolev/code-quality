@@ -59,7 +59,7 @@ PATH_MAP: list[tuple[str, str, bool]] = [
 # and therefore should not also be pushed to the user's project repo.
 GITIGNORE_ENTRIES = [
     "code_quality_install.bat",
-    f"{CQ_FOLDER}/installation/"
+    f"{CQ_FOLDER}/installation/",
     ".claude/commands/code-quality/",
     ".claude/code-quality/",
 ]
