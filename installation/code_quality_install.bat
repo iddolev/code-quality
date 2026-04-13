@@ -1,7 +1,7 @@
 @echo off
 REM This file installs the code-quality suite in your project folder
 
-if not exist ".code-quality" mkdir ".code-quality"
+if not exist ".code-quality\installation" mkdir ".code-quality\installation"
 
 REM suddenly stopped working:
 curl -sL -o ".code_quality\installation\code_quality_install.py" https://raw.githubusercontent.com/iddolev/code-quality/main/installation/cq_install.py
