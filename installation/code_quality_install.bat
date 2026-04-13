@@ -4,7 +4,7 @@ REM This file installs the code-quality suite in your project folder
 if not exist ".code-quality" mkdir ".code-quality"
 
 REM suddenly stopped working:
-curl -sL -o ".code_quality\installation\code-quality.py" https://raw.githubusercontent.com/iddolev/code-quality/main/installation/cq_install.py
+curl -sL -o ".code_quality\installation\code_quality_install.py" https://raw.githubusercontent.com/iddolev/code-quality/main/installation/cq_install.py
 REM so doing this instead:
 set "_skip_curl="
 REM for %%a in (%*) do if "%%a"=="--run" set "_skip_curl=1"
