@@ -6,10 +6,11 @@ Exceptions: table rows, lines long only because of a URL, and code blocks.
 from __future__ import annotations
 
 import re
+import textwrap
 
 from markdown_formatter import MarkdownFormatter
 
-MAX_LINE_LENGTH = 80
+MAX_LINE_LENGTH = 120
 _URL_RE = re.compile(r"https?://\S+")
 
 # Patterns for inline Markdown constructs that should not be split across lines.
@@ -19,6 +20,9 @@ _INLINE_CONSTRUCTS_RE = re.compile(
     r"|\[[^\]]*\]\[[^\]]*\]"  # ref links [text][ref]
     r"|`[^`]+`"                # inline code `code`
 )
+
+_PLACEHOLDER_CHAR = "\x00"
+_TOKEN_RE = re.compile(re.escape(_PLACEHOLDER_CHAR) + r"(\d+)" + re.escape(_PLACEHOLDER_CHAR))
 
 # Regex that captures the leading whitespace, the list marker (with its
 # trailing space), and the rest of the line.  Works for ``- ``, ``* ``,
@@ -79,49 +83,29 @@ class WrapLongLines(MarkdownFormatter):
         return cls._is_table_row(line) or cls._is_url_line(line)
 
     @staticmethod
-    def _tokenize(content: str) -> list[str]:
-        """Split *content* into atomic units for wrapping.
+    def _protect_inline_constructs(text: str) -> tuple[str, list[str]]:
+        """Replace inline Markdown constructs with unique numbered tokens.
 
-        Each inline Markdown construct (link, image, ref-link, inline code) is
-        kept whole as a single unit even if it contains spaces.  All other text
-        is split on whitespace into ordinary words.  Returned in order.
+        Returns the modified text and a list of original matched spans used
+        for restoration.
         """
-        units: list[str] = []
-        pos = 0
-        for m in _INLINE_CONSTRUCTS_RE.finditer(content):
-            units.extend(content[pos:m.start()].split())
-            units.append(m.group(0))
-            pos = m.end()
-        units.extend(content[pos:].split())
-        return units
+        originals: list[str] = []
+
+        def _replace_with_token(m: re.Match[str]) -> str:
+            idx = len(originals)
+            originals.append(m.group(0))
+            return f"{_PLACEHOLDER_CHAR}{idx}{_PLACEHOLDER_CHAR}"
+
+        protected = _INLINE_CONSTRUCTS_RE.sub(_replace_with_token, text)
+        return protected, originals
 
     @staticmethod
-    def _greedy_wrap(
-        units: list[str],
-        initial_indent: str,
-        subsequent_indent: str,
-        width: int,
-    ) -> list[str]:
-        """Greedily pack *units* onto lines using each unit's real length.
+    def _restore_inline_constructs(text: str, originals: list[str]) -> str:
+        """Restore numbered placeholder tokens back to original spans."""
+        def _replace_token(m: re.Match[str]) -> str:
+            return originals[int(m.group(1))]
 
-        Units are joined with a single space.  A line is broken before a unit
-        would push it past *width*.  A unit longer than *width* on its own
-        (e.g. a long link) simply overflows its line, since it cannot be split.
-        """
-        if not units:
-            return [initial_indent]
-
-        lines: list[str] = []
-        current = initial_indent + units[0]
-        for unit in units[1:]:
-            candidate = current + " " + unit
-            if len(candidate) <= width:
-                current = candidate
-            else:
-                lines.append(current)
-                current = subsequent_indent + unit
-        lines.append(current)
-        return lines
+        return _TOKEN_RE.sub(_replace_token, text)
 
     @staticmethod
     def _strip_blockquote_prefix(line: str) -> tuple[str, str]:
@@ -164,13 +148,16 @@ class WrapLongLines(MarkdownFormatter):
             subsequent_indent = bq_prefix + initial_indent
             content_after_marker = line_without_bq.lstrip()
 
-        # Tokenize into atomic units (inline constructs kept whole) and pack
-        # them greedily, measuring each unit at its real width so the emitted
-        # lines genuinely respect MAX_LINE_LENGTH.
-        units = self._tokenize(content_after_marker)
-        return self._greedy_wrap(
-            units,
-            initial_indent=full_initial_indent,
-            subsequent_indent=subsequent_indent,
-            width=MAX_LINE_LENGTH,
-        )
+        # Protect inline constructs from being split by textwrap.
+        protected, originals = self._protect_inline_constructs(content_after_marker)
+
+        wrapped = textwrap.fill(protected,
+                                width=MAX_LINE_LENGTH,
+                                initial_indent=full_initial_indent,
+                                subsequent_indent=subsequent_indent,
+                                break_long_words=False,
+                                break_on_hyphens=False)
+
+        # Restore the protected spans.
+        wrapped = self._restore_inline_constructs(wrapped, originals)
+        return wrapped.split("\n")

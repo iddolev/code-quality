@@ -1,5 +1,5 @@
-"""Allow running as ``python -m format_markdown``."""
+"""Allow running as ``python -m _format_markdown``."""
 
-from . import main
+from .format_markdown import main
 
 main()
