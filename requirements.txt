@@ -1,4 +1,6 @@
 python-dotenv
 pyyaml
 
+pytest
+
 anthropic
