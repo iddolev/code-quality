@@ -206,13 +206,124 @@ class TestMarkdownLinkNotSplit:
 
 
 class TestNulCharPreserved:
-    """Issue #15: NUL placeholder must not corrupt input containing NUL."""
+    """Issue #15: input containing a NUL byte must survive wrapping intact.
+
+    The original implementation used NUL as a placeholder sentinel while
+    protecting inline constructs, which corrupted any genuine NUL in the input.
+    The current implementation uses no sentinel, but this guards the behaviour.
+    """
 
     def test_nul_in_input_preserved(self):
         # A line with a legitimate NUL byte should not have it turned into a space
         text = "some text \x00 more text " + _long()
         result = _rule.apply(text)
         assert "\x00" in result, "NUL byte was corrupted during wrapping"
+
+
+class TestProtectedConstructLineLength:
+    """Regression: a line containing a protected inline construct must still
+    wrap to within MAX_LINE_LENGTH.
+
+    The original implementation substituted each construct with a short
+    placeholder token *before* measuring width with ``textwrap.fill`` and only
+    restored the (much longer) original afterwards.  Because the width was
+    measured against the tiny token, the restored line could blow far past the
+    limit -- in the worst case the whole line was left unwrapped.  The previous
+    tests only checked that the construct stayed *intact*, never its length, so
+    the bug went undetected.
+    """
+
+    # A construct comfortably shorter than the limit, so it cannot be the cause
+    # of an over-length line on its own -- every output line must fit.
+    _LINK = "[a fairly descriptive link label](https://example.com/some/path)"
+    _IMAGE = "![alt text describing the picture](https://example.com/img.png)"
+    _CODE = "`some_inline_code_span(with_args, and_more)`"
+
+    def _assert_all_within_limit(self, result: str):
+        for line in result.splitlines():
+            assert len(line) <= MAX_LINE_LENGTH, \
+                f"line exceeds limit ({len(line)} > {MAX_LINE_LENGTH}): {line!r}"
+
+    def test_link_in_middle_wraps_within_limit(self):
+        assert len(self._LINK) <= MAX_LINE_LENGTH  # test premise
+        text = ("word " * 12) + self._LINK + (" word" * 12)
+        assert len(text) > MAX_LINE_LENGTH
+        result = _rule.apply(text)
+        self._assert_all_within_limit(result)
+        assert any(self._LINK in line for line in result.splitlines()), \
+            "link must remain intact on a single line"
+
+    def test_inline_code_wraps_within_limit(self):
+        text = ("word " * 12) + self._CODE + (" word" * 12)
+        assert len(text) > MAX_LINE_LENGTH
+        result = _rule.apply(text)
+        self._assert_all_within_limit(result)
+        assert any(self._CODE in line for line in result.splitlines())
+
+    def test_image_wraps_within_limit(self):
+        text = ("word " * 12) + self._IMAGE + (" word" * 12)
+        assert len(text) > MAX_LINE_LENGTH
+        result = _rule.apply(text)
+        self._assert_all_within_limit(result)
+        assert any(self._IMAGE in line for line in result.splitlines())
+
+    def test_multiple_constructs_wrap_within_limit(self):
+        text = (
+            ("word " * 6) + self._LINK + (" word" * 6)
+            + " " + self._CODE + (" word" * 6) + " " + self._IMAGE
+        )
+        assert len(text) > MAX_LINE_LENGTH
+        result = _rule.apply(text)
+        self._assert_all_within_limit(result)
+        for construct in (self._LINK, self._CODE, self._IMAGE):
+            assert any(construct in line for line in result.splitlines()), \
+                f"construct split across lines: {construct!r}"
+
+    def test_construct_in_list_item_wraps_within_limit(self):
+        text = "- " + ("word " * 8) + self._LINK + (" word" * 8)
+        assert len(text) > MAX_LINE_LENGTH
+        result = _rule.apply(text)
+        self._assert_all_within_limit(result)
+        lines = result.splitlines()
+        assert lines[0].startswith("- ")
+        assert any(self._LINK in line for line in lines)
+
+
+class TestOversizedConstruct:
+    """An inline construct longer than the limit cannot be split, so it must
+    sit alone on its line rather than dragging neighbouring words over the
+    limit with it (the unavoidable-overflow case)."""
+
+    def test_oversized_link_isolated_on_own_line(self):
+        oversized = "[" + ("x" * (MAX_LINE_LENGTH + 20)) + "](https://e.com)"
+        assert len(oversized) > MAX_LINE_LENGTH  # premise: unbreakable + too long
+        text = "before " + oversized + " after"
+        result = _rule.apply(text)
+        lines = result.splitlines()
+
+        construct_lines = [ln for ln in lines if oversized in ln]
+        assert len(construct_lines) == 1, "oversized construct must stay intact"
+        # Nothing else packed onto the overflowing line.
+        assert construct_lines[0].strip() == oversized
+        # Every *other* line stays within the limit.
+        for ln in lines:
+            if oversized not in ln:
+                assert len(ln) <= MAX_LINE_LENGTH
+
+
+class TestContentPreserved:
+    """Wrapping must not drop or reorder words or constructs -- only whitespace
+    between them may change."""
+
+    def test_words_and_constructs_preserved(self):
+        link = "[label](https://example.com/path)"
+        code = "`inline_code()`"
+        text = ("alpha beta gamma " * 5) + link + " delta epsilon " + code + " zeta"
+        result = _rule.apply(text)
+        # Re-joining the wrapped lines with single spaces must reproduce the
+        # original token sequence (input had only single spaces between tokens).
+        rejoined = " ".join(line.strip() for line in result.splitlines())
+        assert rejoined.split() == text.split()
 
 
 class TestBlockquoteWrapping:
